@@ -12,6 +12,7 @@ const {
     editCourse,
     deleteCourse,
     getInstructorCourses,
+    adminEnrollStudent   //add admin can student in any course
 
 } = require('../controllers/course')
 
@@ -115,5 +116,10 @@ router.post('/createRating', auth, isStudent, createRating);
 router.get('/getAverageRating', getAverageRating);
 router.get('/getReviews', getAllRatingReview);
 
+
+// ********************************************************************************************************
+//                                     Admin direct enrollment student
+//*********************************************************************************************************
+router.post('/adminEnrollStudent', auth, isAdmin, adminEnrollStudent);
 
 module.exports = router;

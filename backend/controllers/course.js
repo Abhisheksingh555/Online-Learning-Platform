@@ -8,6 +8,9 @@ const CourseProgress = require('../models/courseProgress')
 const { uploadImageToCloudinary, deleteResourceFromCloudinary } = require('../utils/imageUploader');
 const { convertSecondsToDuration } = require("../utils/secToDuration")
 
+const mailSender = require('../utils/mailSender');
+const { courseEnrollmentEmail } = require('../mail/templates/courseEnrollmentEmail');
+
 
 
 // ================ create new course ================
@@ -459,5 +462,95 @@ exports.deleteCourse = async (req, res) => {
 }
 
 
+// ================ Admin add student the Course ================
+exports.adminEnrollStudent = async (req, res) => {
+    try {
+        const { courseId, studentId } = req.body;
+        
+        // Check if user making request is admin
+        // const requestingUser = await User.findById(req.user.id);
+        // if (requestingUser.accountType !== 'Admin') {
+        //     return res.status(403).json({
+        //         success: false,
+        //         message: 'Only admins can perform this action',
+        //     });
+        // }
 
+        // Validate course and student
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found',
+            });
+        }
 
+        const student = await User.findById(studentId);
+        if (!student || student.accountType !== 'Student') {
+            return res.status(404).json({
+                success: false,
+                message: 'Student not found',
+            });
+        }
+
+        // Check if student is already enrolled
+        if (course.studentsEnrolled.includes(studentId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Student is already enrolled in this course',
+            });
+        }
+
+        // Enroll the student
+        const enrolledCourse = await Course.findByIdAndUpdate(
+            courseId,
+            { $push: { studentsEnrolled: studentId } },
+            { new: true }
+        );
+
+        // Initialize course progress
+        const courseProgress = await CourseProgress.create({
+            courseID: courseId,
+            userId: studentId,
+            completedVideos: [],
+        });
+
+        // Add course to student's enrolled courses
+        const enrolledStudent = await User.findByIdAndUpdate(
+            studentId,
+            {
+                $push: {
+                    courses: courseId,
+                    courseProgress: courseProgress._id,
+                },
+            },
+            { new: true }
+        );
+
+        // Send enrollment email
+        await mailSender(
+            enrolledStudent.email,
+            `Admin Enrollment in ${enrolledCourse.courseName}`,
+            courseEnrollmentEmail(
+                enrolledCourse.courseName,
+                `${enrolledStudent.firstName}`
+            )
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Student enrolled successfully by admin',
+            data: {
+                course: enrolledCourse,
+                student: enrolledStudent,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error enrolling student',
+            error: error.message,
+        });
+    }
+};
