@@ -42,4 +42,32 @@ export const sidebarLinks = [
     type: ACCOUNT_TYPE.STUDENT,
     icon: "VscHistory",
   },
+  {
+    id: 7,
+    name: "Quizess",
+    path: "/dashboard/Quiz",
+    type: ACCOUNT_TYPE.STUDENT,
+    icon: "VscChecklist",
+  },
+  {
+    id: 8,
+    name: "Assignments",
+    path: "/dashboard/assignment",
+    type: ACCOUNT_TYPE.STUDENT,
+    icon: "VscFile",
+  },
+  {
+    id: 9,
+    name: "Live Class",
+    path: "/dashboard/live",
+    type: ACCOUNT_TYPE.STUDENT,
+    icon: "VscBroadcast",
+  },
+  {
+    id: 10,
+    name: "Certificate",
+    path: "/dashboard/certificate",
+    type: ACCOUNT_TYPE.STUDENT,
+    icon: "VscVerified",
+  },
 ];
