@@ -40,6 +40,7 @@ import { HiArrowNarrowUp } from "react-icons/hi";
 import AddCatalog from "./components/core/Dashboard/admin/addCatalogs/AddCatalogs";
 import UserManage from "./components/core/Dashboard/admin/userManage/UserManage";
 import AdminDashboard from "./components/core/Dashboard/admin/dashboard/AdminDashboard";
+import AssignStudent from "./components/core/Dashboard/admin/assignStudent/AssignStudent";
 
 function App() {
   const { user } = useSelector((state) => state.profile);
@@ -185,6 +186,7 @@ function App() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="dashboard/catalog" element={<AddCatalog />} />
               <Route path="dashboard/manage-users" element={<UserManage />}/>
+              <Route path="dashboard/assign-student" element={<AssignStudent />}/>
             </>
           )}
         </Route>
