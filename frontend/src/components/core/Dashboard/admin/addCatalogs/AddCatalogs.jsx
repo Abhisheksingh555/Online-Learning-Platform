@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { categories, catalogCreate } from "../../../../../services/apis";
+import axios from "axios";
+import { useSelector } from "react-redux";
 
 const AddCatalog = () => {
-  const [categories, setCategories] = useState([]);
+  const { token } = useSelector((state) => state.auth);
+  const [categoriesList, setCategoriesList] = useState([]);
   const [newCategory, setNewCategory] = useState({
     name: "",
     description: "",
@@ -11,17 +15,25 @@ const AddCatalog = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
 
+  // Configure axios instance with auth token
+  const axiosInstance = axios.create({
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
   // Fetch all categories
   const fetchCategories = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(" /api/v1/course/getAllCourses");
-      const data = await response.json();
+      const response = await axiosInstance.get(categories.CATEGORIES_API);
+      const data = response.data;
       if (data.success) {
-        setCategories(data.data);
+        setCategoriesList(data.data || []);
       }
     } catch (error) {
-      toast.error("Failed to fetch categories");
+      console.error("Error fetching categories:", error);
+      toast.error(error.response?.data?.message || "Failed to fetch categories");
     } finally {
       setIsLoading(false);
     }
@@ -51,32 +63,29 @@ const AddCatalog = () => {
   const handleAddCategory = async (e) => {
     e.preventDefault();
 
-    if (!newCategory.name || !newCategory.description) {
+    if (!newCategory.name.trim() || !newCategory.description.trim()) {
       toast.warning("Please fill all fields");
       return;
     }
 
     try {
       setIsLoading(true);
-      const response = await fetch("/api/v1/course/getAllCourses", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newCategory),
-      });
-
-      const data = await response.json();
+      const response = await axiosInstance.post(
+        catalogCreate.CATALOGPAGECREATE_API,
+        newCategory
+      );
+      const data = response.data;
 
       if (data.success) {
         toast.success("Category added successfully");
         setNewCategory({ name: "", description: "" });
         fetchCategories();
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "Failed to add category");
       }
     } catch (error) {
-      toast.error("Failed to add category");
+      console.error("Error adding category:", error);
+      toast.error(error.response?.data?.message || "Failed to add category");
     } finally {
       setIsLoading(false);
     }
@@ -86,35 +95,29 @@ const AddCatalog = () => {
   const handleUpdateCategory = async (e) => {
     e.preventDefault();
 
-    if (!editingCategory.name || !editingCategory.description) {
+    if (!editingCategory?.name.trim() || !editingCategory?.description.trim()) {
       toast.warning("Please fill all fields");
       return;
     }
 
     try {
       setIsLoading(true);
-      const response = await fetch(
-        `/api/v1/course/getAllCourses/${editingCategory._id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(editingCategory),
-        }
+      const response = await axiosInstance.put(
+        `${catalogCreate.CATALOGPAGECREATE_API}/${editingCategory._id}`,
+        editingCategory
       );
-
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         toast.success("Category updated successfully");
         setEditingCategory(null);
         fetchCategories();
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "Failed to update category");
       }
     } catch (error) {
-      toast.error("Failed to update category");
+      console.error("Error updating category:", error);
+      toast.error(error.response?.data?.message || "Failed to update category");
     } finally {
       setIsLoading(false);
     }
@@ -125,29 +128,25 @@ const AddCatalog = () => {
     if (window.confirm("Are you sure you want to delete this category?")) {
       try {
         setIsLoading(true);
-        const response = await fetch(
-          `/api/v1/course/getAllCourses${categoryId}`,
-          {
-            method: "DELETE",
-          }
+        const response = await axiosInstance.delete(
+          `${catalogCreate.CATALOGPAGECREATE_API}/${categoryId}`
         );
-
-        const data = await response.json();
+        const data = response.data;
 
         if (data.success) {
           toast.success("Category deleted successfully");
           fetchCategories();
         } else {
-          toast.error(data.message);
+          toast.error(data.message || "Failed to delete category");
         }
       } catch (error) {
-        toast.error("Failed to delete category");
+        console.error("Error deleting category:", error);
+        toast.error(error.response?.data?.message || "Failed to delete category");
       } finally {
         setIsLoading(false);
       }
     }
   };
-
   // Start editing a category
   const startEditing = (category) => {
     setEditingCategory({ ...category });
@@ -170,50 +169,36 @@ const AddCatalog = () => {
           <h2 className="text-xl font-semibold mb-4 text-softteal">
             {editingCategory ? "Edit Category" : "Add New Category"}
           </h2>
-          <form
-            onSubmit={
-              editingCategory ? handleUpdateCategory : handleAddCategory
-            }
-          >
+          <form onSubmit={editingCategory ? handleUpdateCategory : handleAddCategory}>
             <div className="mb-4">
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-richblack-300 mb-1"
-              >
+              <label htmlFor="name" className="block text-sm font-medium text-richblack-300 mb-1">
                 Category Name
               </label>
               <input
                 type="text"
                 id="name"
                 name="name"
-                value={
-                  editingCategory ? editingCategory.name : newCategory.name
-                }
+                value={editingCategory ? editingCategory.name : newCategory.name}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-richblack-600 bg-richblack-800 text-richblack-5 rounded-md focus:outline-none focus:ring-2 focus:ring-electricblue"
                 placeholder="Enter category name"
+                required
               />
             </div>
             <div className="mb-4">
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium text-richblack-300 mb-1"
-              >
+              <label htmlFor="description" className="block text-sm font-medium text-richblack-300 mb-1">
                 Description
               </label>
               <textarea
                 id="description"
                 name="description"
-                value={
-                  editingCategory
-                    ? editingCategory.description
-                    : newCategory.description
-                }
+                value={editingCategory ? editingCategory.description : newCategory.description}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-richblack-600 bg-richblack-800 text-richblack-5 rounded-md focus:outline-none focus:ring-2 focus:ring-electricblue"
                 placeholder="Enter category description"
                 rows="3"
-              ></textarea>
+                required
+              />
             </div>
             <div className="flex justify-end space-x-2">
               {editingCategory && (
@@ -246,11 +231,11 @@ const AddCatalog = () => {
           <h2 className="text-xl font-semibold mb-4 text-softteal">
             Existing Categories
           </h2>
-          {isLoading && !categories.length ? (
+          {isLoading && !categoriesList.length ? (
             <div className="text-center py-8 text-richblack-300">
               Loading categories...
             </div>
-          ) : categories.length === 0 ? (
+          ) : categoriesList.length === 0 ? (
             <div className="text-center py-8 text-richblack-300">
               No categories found
             </div>
@@ -271,7 +256,7 @@ const AddCatalog = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-richblack-800 divide-y divide-richblack-700">
-                  {categories.map((category) => (
+                  {categoriesList.map((category) => (
                     <tr key={category._id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-richblack-5">
@@ -287,12 +272,14 @@ const AddCatalog = () => {
                         <button
                           onClick={() => startEditing(category)}
                           className="text-electricblue hover:text-softteal mr-4"
+                          disabled={isLoading}
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteCategory(category._id)}
                           className="text-red-500 hover:text-red-700"
+                          disabled={isLoading}
                         >
                           Delete
                         </button>
