@@ -13,6 +13,7 @@ import Contact from "./pages/Contact";
 import PageNotFound from "./pages/PageNotFound";
 import CourseDetails from "./pages/CourseDetails";
 import Catalog from "./pages/Catalog";
+import AllCourse from "./pages/AllCourse";
 
 import Navbar from "./components/common/Navbar";
 
@@ -41,6 +42,9 @@ import AddCatalog from "./components/core/Dashboard/admin/addCatalogs/AddCatalog
 import UserManage from "./components/core/Dashboard/admin/userManage/UserManage";
 import AdminDashboard from "./components/core/Dashboard/admin/dashboard/AdminDashboard";
 import AssignStudent from "./components/core/Dashboard/admin/assignStudent/AssignStudent";
+
+import StudentDashboard from "./components/core/Dashboard/Student/StudentDashboard/StudentDashboard";
+import PaymentHistory from "./components/core/Dashboard/Student/PaymentHistory/Payment";
 
 function App() {
   const { user } = useSelector((state) => state.profile);
@@ -93,6 +97,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/about" element={<About />} />
+        <Route path="/allcourse" element={<AllCourse />} />
+        <Route path="/course/:courseId" element={<CourseDetails />} />
         <Route path="catalog/:catalogName" element={<Catalog />} />
         <Route path="courses/:courseId" element={<CourseDetails />} />
 
@@ -158,6 +164,8 @@ function App() {
           {/* cart , EnrolledCourses */}
           {user?.accountType === ACCOUNT_TYPE.STUDENT && (
             <>
+              <Route path="dashboard/student" element={<StudentDashboard/>} />
+              <Route path="dashboard/purchase-history" element={<PaymentHistory/>} />
               <Route path="dashboard/cart" element={<Cart />} />
               <Route
                 path="dashboard/enrolled-courses"
