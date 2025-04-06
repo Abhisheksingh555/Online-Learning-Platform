@@ -1,176 +1,221 @@
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { toast } from 'react-hot-toast';
+import { useState, useEffect } from "react";
+
+const courses = [
+  { id: 1, name: "DSA in Java" },
+  { id: 2, name: "Full Stack MERN" },
+  { id: 3, name: "Machine Learning" },
+];
+
+const students = [
+  { id: 1, name: "Abhishek Singh", email: "abhishek@example.com" },
+  { id: 2, name: "Aryan Verma", email: "aryan@example.com" },
+  { id: 3, name: "Priya Sharma", email: "priya@example.com" },
+  { id: 4, name: "Priyaka Sharma", email: "priyaka@example.com" },
+  { id: 5, name: "Priyan Sharma", email: "priyan@example.com" },
+];
 
 const AssignStudent = () => {
-  const [courses, setCourses] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    courseId: '',
-    studentId: ''
-  });
-  const { token } = useSelector(state => state.auth);
+  const [activeTab, setActiveTab] = useState("remove");
+  const [selectedCourse, setSelectedCourse] = useState("2");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState("");
 
-  // Fetch all courses and students on component mount
+  // ✅ Each student is assigned with a courseId
+  const [assignedStudents, setAssignedStudents] = useState([
+    {
+      id: 1,
+      name: "Abhishek Singh",
+      email: "abhishek@example.com",
+      courseId: "2",
+    },
+    {
+      id: 2,
+      name: "Aryan Verma",
+      email: "aryan@example.com",
+      courseId: "2",
+    },
+    {
+      id: 3,
+      name: "Priya Sharma",
+      email: "priya@example.com",
+      courseId: "2",
+    },
+    {
+      id: 4,
+      name: "Priyaka Sharma",
+      email: "priyaka@example.com",
+      courseId: "1",
+    },
+  ]);
+
+  const filteredStudents = students.filter((student) =>
+    student.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const studentsInCourse = assignedStudents.filter(
+    (s) => s.courseId === selectedCourse
+  );
+
+  const handleAssign = () => {
+    const student = students.find((s) => s.id.toString() === selectedStudent);
+    if (
+      student &&
+      !assignedStudents.some(
+        (s) => s.id === student.id && s.courseId === selectedCourse
+      )
+    ) {
+      setAssignedStudents((prev) => [
+        ...prev,
+        { ...student, courseId: selectedCourse },
+      ]);
+      setSelectedStudent("");
+      setSearchTerm("");
+    }
+  };
+
+  const handleRemove = (studentId) => {
+    setAssignedStudents((prev) =>
+      prev.filter(
+        (s) => !(s.id === studentId && s.courseId === selectedCourse)
+      )
+    );
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Fetch courses
-        const coursesResponse = await fetch(`/course/getAllCourses`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        const coursesData = await coursesResponse.json();
-        setCourses(coursesData.data);
-
-        // Fetch students
-        const studentsResponse = await fetch(`/admin/getAllStudents`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        const studentsData = await studentsResponse.json();
-        setStudents(studentsData.data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('Failed to fetch data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [token]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const handleEnroll = async (e) => {
-    e.preventDefault();
-    if (!formData.courseId || !formData.studentId) {
-      toast.error('Please select both course and student');
-      return;
+    if (!filteredStudents.find((s) => s.id.toString() === selectedStudent)) {
+      setSelectedStudent("");
     }
-
-    try {
-      setLoading(true);
-      const response = await (formData, token);
-      if (response.success) {
-        toast.success('Student enrolled successfully');
-        // Refresh data or update state as needed
-      } else {
-        toast.error(response.message);
-      }
-    } catch (error) {
-      console.error('Error enrolling student:', error);
-      toast.error('Failed to enroll student');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUnenroll = async (e) => {
-    e.preventDefault();
-    if (!formData.courseId || !formData.studentId) {
-      toast.error('Please select both course and student');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await (formData, token);
-      if (response.success) {
-        toast.success('Student unenrolled successfully');
-        // Refresh data or update state as needed
-      } else {
-        toast.error(response.message);
-      }
-    } catch (error) {
-      console.error('Error unenrolling student:', error);
-      toast.error('Failed to unenroll student');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [searchTerm]);
 
   return (
-    <div className="p-6 bg-richblack-900 text-richblack-5 min-h-screen">
-      <h1 className="text-3xl font-semibold mb-6">Manage Student Enrollment</h1>
-      
-      <div className="bg-richblack-800 p-6 rounded-lg shadow-lg">
-        <form className="space-y-4">
-          <div>
-            <label htmlFor="courseId" className="block text-sm font-medium mb-2">
-              Select Course
+    <div className="p-6 rounded-lg bg-richblack-800 min-h-[80vh] text-white max-w-4xl mx-auto">
+      <h1 className="text-3xl font-semibold text-yellow-400 mb-6 text-center">
+        Assign Students to Course
+      </h1>
+
+      {/* Tabs */}
+      <div className="flex gap-4 mb-6 justify-center">
+        {["assign", "remove"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-full font-medium ${
+              activeTab === tab
+                ? "bg-yellow-400 text-richblack-900"
+                : "bg-richblack-700"
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Course Dropdown */}
+      <div className="mb-4">
+        <label className="block mb-1 text-richblack-300">Select Course</label>
+        <select
+          value={selectedCourse}
+          onChange={(e) => setSelectedCourse(e.target.value)}
+          className="w-full p-2 rounded bg-richblack-700 text-white"
+        >
+          <option value="">-- Choose Course --</option>
+          {courses.map((course) => (
+            <option key={course.id} value={course.id}>
+              {course.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Assign Tab */}
+      {activeTab === "assign" && (
+        <>
+          <div className="mb-4">
+            <label className="block mb-1 text-richblack-300">
+              Search Student
             </label>
-            <select
-              id="courseId"
-              name="courseId"
-              value={formData.courseId}
-              onChange={handleInputChange}
-              className="w-full p-3 rounded-lg bg-richblack-700 border border-richblack-600 text-richblack-5"
-              disabled={loading}
-            >
-              <option value="">Select a course</option>
-              {courses.map((course) => (
-                <option key={course._id} value={course._id}>
-                  {course.courseName}
-                </option>
-              ))}
-            </select>
+            <input
+              type="text"
+              placeholder="Search by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-2 rounded bg-richblack-700 text-white"
+            />
           </div>
 
-          <div>
-            <label htmlFor="studentId" className="block text-sm font-medium mb-2">
+          <div className="mb-4">
+            <label className="block mb-1 text-richblack-300">
               Select Student
             </label>
             <select
-              id="studentId"
-              name="studentId"
-              value={formData.studentId}
-              onChange={handleInputChange}
-              className="w-full p-3 rounded-lg bg-richblack-700 border border-richblack-600 text-richblack-5"
-              disabled={loading}
+              value={selectedStudent}
+              onChange={(e) => setSelectedStudent(e.target.value)}
+              className="w-full p-2 rounded bg-richblack-700 text-white"
             >
-              <option value="">Select a student</option>
-              {students.map((student) => (
-                <option key={student._id} value={student._id}>
-                  {student.firstName} {student.lastName} ({student.email})
+              <option value="">-- Choose Student --</option>
+              {filteredStudents.length > 0 ? (
+                filteredStudents.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} - {student.email}
+                  </option>
+                ))
+              ) : (
+                <option disabled value="">
+                  No matching students
                 </option>
-              ))}
+              )}
             </select>
           </div>
 
-          <div className="flex gap-4 pt-4">
-            <button
-              type="button"
-              onClick={handleEnroll}
-              disabled={loading || !formData.courseId || !formData.studentId}
-              className="flex-1 py-2 px-4 bg-yellow-50 text-richblack-900 rounded-lg font-medium hover:bg-yellow-25 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Processing...' : 'Enroll Student'}
-            </button>
-            <button
-              type="button"
-              onClick={handleUnenroll}
-              disabled={loading || !formData.courseId || !formData.studentId}
-              className="flex-1 py-2 px-4 bg-pink-600 text-richblack-5 rounded-lg font-medium hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Processing...' : 'Unenroll Student'}
-            </button>
-          </div>
-        </form>
-      </div>
+          <button
+            onClick={handleAssign}
+            disabled={!selectedCourse || !selectedStudent}
+            className="bg-yellow-400 px-4 py-2 rounded text-richblack-900 font-semibold hover:bg-opacity-90 transition disabled:opacity-50"
+          >
+            Assign Student
+          </button>
+        </>
+      )}
 
-      {/* Optional: Add a section to show enrolled students for selected course */}
+      {/* Remove Tab */}
+      {activeTab === "remove" && (
+        <div className="mt-4">
+          {studentsInCourse.length === 0 ? (
+            <p className="text-richblack-300">
+              No students assigned to this course.
+            </p>
+          ) : (
+            <table className="w-full text-left mt-4 border border-richblack-700">
+              <thead>
+                <tr className="bg-richblack-700 text-yellow-400">
+                  <th className="py-2 px-3">Name</th>
+                  <th className="py-2 px-3">Email</th>
+                  <th className="py-2 px-3">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {studentsInCourse.map((student) => (
+                  <tr
+                    key={student.id}
+                    className="border-t border-richblack-600"
+                  >
+                    <td className="py-2 px-3">{student.name}</td>
+                    <td className="py-2 px-3">{student.email}</td>
+                    <td className="py-2 px-3">
+                      <button
+                        onClick={() => handleRemove(student.id)}
+                        className="text-red-400 hover:text-red-500 font-medium"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 };
