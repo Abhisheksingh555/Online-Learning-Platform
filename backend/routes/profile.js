@@ -10,7 +10,8 @@ const {
     getUserDetails,
     getEnrolledCourses,
     deleteAccount,
-    instructorDashboard
+    instructorDashboard,
+    getAllStudents
 } = require('../controllers/profile');
 
 
@@ -32,6 +33,11 @@ router.put('/updateUserProfileImage', auth, updateUserProfileImage);
 
 // instructor Dashboard Details
 router.get('/instructorDashboard', auth, isInstructor, instructorDashboard);
+
+
+// student 
+router.get("/students", getAllStudents);
+
 
 
 

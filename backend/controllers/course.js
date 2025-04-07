@@ -10,6 +10,7 @@ const { convertSecondsToDuration } = require("../utils/secToDuration")
 
 const mailSender = require('../utils/mailSender');
 const { courseEnrollmentEmail } = require('../mail/templates/courseEnrollmentEmail');
+const {courseRemovalEmail} = require('../mail/templates/coursRemoveEmail');
 
 
 
@@ -462,94 +463,133 @@ exports.deleteCourse = async (req, res) => {
 }
 
 
-// ================ Admin add student the Course ================
+// ================== Admin: Enroll Student in Course ==================
 exports.adminEnrollStudent = async (req, res) => {
     try {
-        const { courseId, studentId } = req.body;
+        const { courseId, studentEmail } = req.body;
         
-        // Check if user making request is admin
-        // const requestingUser = await User.findById(req.user.id);
-        // if (requestingUser.accountType !== 'Admin') {
-        //     return res.status(403).json({
-        //         success: false,
-        //         message: 'Only admins can perform this action',
-        //     });
-        // }
+        if (!courseId || !studentEmail) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Missing required fields: courseId or studentEmail' 
+            });
+        }
 
-        // Validate course and student
+        // ✅ Validate course
         const course = await Course.findById(courseId);
         if (!course) {
-            return res.status(404).json({
-                success: false,
-                message: 'Course not found',
-            });
+            return res.status(404).json({ success: false, message: 'Course not found' });
         }
 
-        const student = await User.findById(studentId);
-        if (!student || student.accountType !== 'Student') {
-            return res.status(404).json({
-                success: false,
-                message: 'Student not found',
-            });
+        // ✅ Validate student by email
+        const student = await User.findOne({ email: studentEmail, accountType: 'Student' });
+        if (!student) {
+            return res.status(404).json({ success: false, message: 'Student not found' });
         }
 
-        // Check if student is already enrolled
+        const studentId = student._id;
+
+        // ✅ Check if student already enrolled
         if (course.studentsEnrolled.includes(studentId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Student is already enrolled in this course',
-            });
+            return res.status(400).json({ success: false, message: 'Student already enrolled' });
         }
 
-        // Enroll the student
-        const enrolledCourse = await Course.findByIdAndUpdate(
-            courseId,
-            { $push: { studentsEnrolled: studentId } },
-            { new: true }
-        );
+        // ✅ Enroll student
+        course.studentsEnrolled.push(studentId);
+        await course.save();
 
-        // Initialize course progress
+        // ✅ Initialize progress
         const courseProgress = await CourseProgress.create({
             courseID: courseId,
             userId: studentId,
             completedVideos: [],
         });
 
-        // Add course to student's enrolled courses
-        const enrolledStudent = await User.findByIdAndUpdate(
-            studentId,
-            {
-                $push: {
-                    courses: courseId,
-                    courseProgress: courseProgress._id,
-                },
-            },
-            { new: true }
-        );
+        // ✅ Add course and progress to student
+        student.courses.push(courseId);
+        student.courseProgress.push(courseProgress._id);
+        await student.save();
 
-        // Send enrollment email
+        // ✅ Notify via email
         await mailSender(
-            enrolledStudent.email,
-            `Admin Enrollment in ${enrolledCourse.courseName}`,
-            courseEnrollmentEmail(
-                enrolledCourse.courseName,
-                `${enrolledStudent.firstName}`
-            )
+            studentEmail,
+            `Admin Enrollment in ${course.courseName}`,
+            courseEnrollmentEmail(course.courseName, student.firstName)
         );
 
         return res.status(200).json({
             success: true,
-            message: 'Student enrolled successfully by admin',
-            data: {
-                course: enrolledCourse,
-                student: enrolledStudent,
-            },
+            message: 'Student enrolled successfully',
+            data: { course, student },
         });
     } catch (error) {
-        console.error(error);
+        console.error('Enroll Error:', error);
         return res.status(500).json({
             success: false,
             message: 'Error enrolling student',
+            error: error.message,
+        });
+    }
+};
+
+// ================== Admin: Remove Student from Course ==================
+exports.adminRemoveStudentFromCourse = async (req, res) => {
+    try {
+        const { courseId, studentEmail } = req.body;
+
+        // ✅ Validate course
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({ success: false, message: 'Course not found' });
+        }
+
+        // ✅ Validate student
+        const student = await User.findOne({ email: studentEmail, accountType: 'Student' });
+        if (!student) {
+            return res.status(404).json({ success: false, message: 'Student not found' });
+        }
+
+        const studentId = student._id;
+
+        // ✅ Check if student is enrolled
+        if (!course.studentsEnrolled.includes(studentId)) {
+            return res.status(400).json({ success: false, message: 'Student not enrolled' });
+        }
+
+        // ✅ Remove student from course
+        course.studentsEnrolled.pull(studentId);
+        await course.save();
+
+        // ✅ Remove course progress
+        const progress = await CourseProgress.findOneAndDelete({
+            courseID: courseId,
+            userId: studentId,
+        });
+
+        // ✅ Remove course & progress reference from student
+        student.courses.pull(courseId);
+        if (progress?._id) {
+            student.courseProgress.pull(progress._id);
+        }
+        await student.save();
+
+        // ✅ Notify via email
+        await mailSender(
+            studentEmail,
+            `Removed from ${course.courseName}`,
+            courseRemovalEmail(course.courseName, student.firstName)
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Student removed successfully from course',
+            data: { course, student },
+        });
+    } catch (error) {
+        console.error('Removal Error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error removing student',
             error: error.message,
         });
     }

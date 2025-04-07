@@ -302,3 +302,25 @@ exports.instructorDashboard = async (req, res) => {
         res.status(500).json({ message: "Server Error" })
     }
 }
+
+// ================ Get All Students ================
+exports.getAllStudents = async (req, res) => {
+    try {
+        const students = await User.find({ accountType: "Student" })
+            .populate("additionalDetails")
+            .select("-password -token");
+
+        res.status(200).json({
+            success: true,
+            data: students,
+            message: "All students fetched successfully",
+        });
+    } catch (error) {
+        console.error("Error fetching students:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch students",
+            error: error.message,
+        });
+    }
+};
