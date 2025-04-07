@@ -40,7 +40,7 @@ export const sidebarLinks = [
     name: "Assignments",
     path: "/dashboard/assignment",
     type: ACCOUNT_TYPE.STUDENT,
-    icon: "VscFile",
+    icon: "VscNotebook",
   },
   {
     id: 7,
