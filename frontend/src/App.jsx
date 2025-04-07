@@ -46,6 +46,11 @@ import AssignStudent from "./components/core/Dashboard/admin/assignStudent/Assig
 import StudentDashboard from "./components/core/Dashboard/Student/StudentDashboard/StudentDashboard";
 import PaymentHistory from "./components/core/Dashboard/Student/PaymentHistory/Payment";
 
+import TeacherAssignment from "./pages/assignments/TeacherAssignment";
+import StudentAssignment from "./pages/assignments/StudentAssignment";
+
+import TeacherLiveClass from "./pages/LiveClass/TeacherLiveClass";
+
 function App() {
   const { user } = useSelector((state) => state.profile);
 
@@ -167,6 +172,7 @@ function App() {
               <Route path="dashboard/student" element={<StudentDashboard/>} />
               <Route path="dashboard/purchase-history" element={<PaymentHistory/>} />
               <Route path="dashboard/cart" element={<Cart />} />
+              <Route path="dashboard/assignment" element={<StudentAssignment />} />
               <Route
                 path="dashboard/enrolled-courses"
                 element={<EnrolledCourses />}
@@ -181,6 +187,8 @@ function App() {
               <Route path="dashboard/instructor" element={<Instructor />} />
               <Route path="dashboard/add-course" element={<AddCourse />} />
               <Route path="dashboard/my-courses" element={<MyCourses />} />
+              <Route path="dashboard/assignment" element={<TeacherAssignment />} />
+              <Route path="dashboard/liveclass" element={<TeacherLiveClass/>} />
               <Route
                 path="dashboard/edit-course/:courseId"
                 element={<EditCourse />}

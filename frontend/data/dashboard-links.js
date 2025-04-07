@@ -45,7 +45,7 @@ export const sidebarLinks = [
   {
     id: 7,
     name: "Live Class",
-    path: "/dashboard/live",
+    path: "/dashboard/liveclass",
     type: ACCOUNT_TYPE.STUDENT,
     icon: "VscBroadcast",
   },
@@ -94,14 +94,14 @@ export const sidebarLinks = [
   {
     id: 14,
     name: "Live Class",
-    path: "/dashboard/live",
+    path: "/dashboard/liveclass",
     type: ACCOUNT_TYPE.INSTRUCTOR,
     icon: "VscBroadcast",
   },
   {
     id: 15,
     name: "Add Assignments",
-    path: "/dashboard/addassignment",
+    path: "/dashboard/assignment",
     type: ACCOUNT_TYPE.INSTRUCTOR,
     icon: "VscNotebook",
   },
