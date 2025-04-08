@@ -113,13 +113,6 @@ export const sidebarLinks = [
     icon: "VscStarFull",
   },
   {
-    id: 17,
-    name: "Course Analytics",
-    path: "/dashboard/courseAnalytics",
-    type: ACCOUNT_TYPE.INSTRUCTOR,
-    icon: "VscGraphLine",
-  },
-  {
     id: 18,
     name: "Dashboard",
     path: "/dashboard",
