@@ -49,7 +49,11 @@ import PaymentHistory from "./components/core/Dashboard/Student/PaymentHistory/P
 import TeacherAssignment from "./pages/assignments/TeacherAssignment";
 import StudentAssignment from "./pages/assignments/StudentAssignment";
 
-import TeacherLiveClass from "./pages/LiveClass/TeacherLiveClass";
+import LiveClassTeacher from "./pages/LiveClass/LiveClassTeacher";
+import LiveClassStudent from "./pages/LiveClass/LiveClassStudent";
+
+import TeacherQuiz from "./pages/Quiz/TeacherQuiz";
+import StudentQuiz from "./pages/Quiz/StudentQuiz";
 
 function App() {
   const { user } = useSelector((state) => state.profile);
@@ -173,6 +177,8 @@ function App() {
               <Route path="dashboard/purchase-history" element={<PaymentHistory/>} />
               <Route path="dashboard/cart" element={<Cart />} />
               <Route path="dashboard/assignment" element={<StudentAssignment />} />
+              <Route path="dashboard/liveclass" element={<LiveClassStudent/>} />
+              <Route path="dashboard/Quiz" element={<StudentQuiz/>} />
               <Route
                 path="dashboard/enrolled-courses"
                 element={<EnrolledCourses />}
@@ -188,7 +194,8 @@ function App() {
               <Route path="dashboard/add-course" element={<AddCourse />} />
               <Route path="dashboard/my-courses" element={<MyCourses />} />
               <Route path="dashboard/assignment" element={<TeacherAssignment />} />
-              <Route path="dashboard/liveclass" element={<TeacherLiveClass/>} />
+              <Route path="dashboard/liveclass" element={<LiveClassTeacher/>} />
+              <Route path="dashboard/gamification" element={<TeacherQuiz/>} />
               <Route
                 path="dashboard/edit-course/:courseId"
                 element={<EditCourse />}
