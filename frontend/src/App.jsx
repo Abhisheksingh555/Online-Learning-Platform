@@ -55,6 +55,10 @@ import LiveClassStudent from "./pages/LiveClass/LiveClassStudent";
 import TeacherQuiz from "./pages/Quiz/TeacherQuiz";
 import StudentQuiz from "./pages/Quiz/StudentQuiz";
 
+import AiPowered from "./pages/AiPowered/AiPowered";
+import Certificate from "./pages/Certificate/Certificate";
+import CourseSuggestion from "./pages/CourseSuggestion/CourseSuggestion";
+
 function App() {
   const { user } = useSelector((state) => state.profile);
 
@@ -179,6 +183,9 @@ function App() {
               <Route path="dashboard/assignment" element={<StudentAssignment />} />
               <Route path="dashboard/liveclass" element={<LiveClassStudent/>} />
               <Route path="dashboard/Quiz" element={<StudentQuiz/>} />
+              <Route path="dashboard/aipowered" element={<AiPowered/>} />
+              <Route path="dashboard/certificate" element={<Certificate/>} />
+              <Route path="dashboard/suggestion-courses" element={<CourseSuggestion/>} />
               <Route
                 path="dashboard/enrolled-courses"
                 element={<EnrolledCourses />}
