@@ -1,381 +1,324 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import { 
-  FiVideo as VideoIcon,
-  FiMic as MicIcon,
-  FiMicOff as MicOffIcon,
-  FiVideoOff as VideoOffIcon,
-  FiShare2 as ScreenShareIcon,
-  FiUsers as UsersIcon,
-  FiMessageSquare as MessageIcon,
-  FiCopy as CopyIcon,
-  FiPhoneOff as EndCallIcon,
-  FiAlertTriangle as AlertIcon
-} from 'react-icons/fi';
-import Peer from 'peerjs';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+  FaCalendarCheck, 
+  FaClock, 
+  FaPlusCircle, 
+  FaChalkboardTeacher, 
+  FaEdit, 
+  FaTrash, 
+  FaUser 
+} from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const LiveClassTeacher = () => {
-  // State management
-  const [isMicOn, setIsMicOn] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(false);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [students, setStudents] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [isClassActive, setIsClassActive] = useState(true);
-  const [mediaError, setMediaError] = useState(null);
-
-  // Refs
-  const teacherVideoRef = useRef(null);
-  const screenShareRef = useRef(null);
-  const peerRef = useRef(null);
-  const peersRef = useRef({});
-  const mediaStreamRef = useRef(null);
-
-  // Initialize media stream
-  const initMediaStream = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
-      });
-      mediaStreamRef.current = stream;
-      
-      if (teacherVideoRef.current) {
-        teacherVideoRef.current.srcObject = stream;
-        setIsMicOn(true);
-        setIsCameraOn(true);
-      }
-      return stream;
-    } catch (error) {
-      setMediaError("Camera/microphone access denied");
-      toast.error("Please enable camera/microphone permissions");
-      console.error("Media error:", error);
-      return null;
+  const [classTitle, setClassTitle] = useState('');
+  const [classDate, setClassDate] = useState('');
+  const [classTime, setClassTime] = useState('');
+  const [classDescription, setClassDescription] = useState('');
+  const [classDuration, setClassDuration] = useState('60');
+  const [scheduledClasses, setScheduledClasses] = useState([
+    {
+      id: 1,
+      title: 'Advanced React Patterns',
+      date: '2025-04-15',
+      time: '14:00',
+      description: 'Exploring advanced React concepts and best practices',
+      duration: '90',
+      students: 24
+    },
+    {
+      id: 2,
+      title: 'Node.js Fundamentals',
+      date: '2025-04-17',
+      time: '10:30',
+      description: 'Introduction to Node.js and backend development',
+      duration: '120',
+      students: 18
     }
-  }, []);
+  ]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingClass, setEditingClass] = useState(null);
 
-  // Initialize PeerJS connection
-  useEffect(() => {
-    const peer = new Peer(`teacher-${Math.random().toString(36).substr(2, 8)}`);
-    peerRef.current = peer;
-
-    const setupPeer = async () => {
-      const stream = await initMediaStream();
-      if (!stream) return;
-
-      peer.on('call', (call) => {
-        call.answer(stream);
-        call.on('stream', (studentStream) => {
-          setStudents(prev => [...prev, { 
-            id: call.peer, 
-            stream: studentStream,
-            name: `Student ${prev.length + 1}`
-          }]);
-        });
-      });
-
-      peer.on('connection', (conn) => {
-        conn.on('data', (data) => {
-          setMessages(prev => [...prev, { 
-            text: data.message, 
-            sender: data.sender,
-            timestamp: new Date().toLocaleTimeString()
-          }]);
-        });
-      });
-    };
-
-    setupPeer();
-
-    return () => {
-      peer.destroy();
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [initMediaStream]);
-
-  // Toggle media controls
-  const toggleMedia = (type) => {
-    if (!mediaStreamRef.current) return;
-
-    const tracks = type === 'audio' 
-      ? mediaStreamRef.current.getAudioTracks() 
-      : mediaStreamRef.current.getVideoTracks();
-
-    if (tracks.length > 0) {
-      const enabled = !tracks[0].enabled;
-      tracks[0].enabled = enabled;
-      
-      if (type === 'audio') setIsMicOn(enabled);
-      else setIsCameraOn(enabled);
+  const handleAddClass = () => {
+    if (classTitle && classDate && classTime) {
+      const newClass = {
+        id: scheduledClasses.length + 1,
+        title: classTitle,
+        date: classDate,
+        time: classTime,
+        description: classDescription,
+        duration: classDuration,
+        students: 0
+      };
+      setScheduledClasses([...scheduledClasses, newClass]);
+      resetForm();
+      setModalVisible(false);
+    } else {
+      alert('Please fill in all required fields');
     }
   };
 
-  // Screen sharing
-  const toggleScreenShare = async () => {
-    try {
-      if (isScreenSharing) {
-        const stream = await initMediaStream();
-        if (stream) {
-          Object.values(peersRef.current).forEach(peer => {
-            peer.replaceTrack(
-              peer.streams[0].getVideoTracks()[0],
-              stream.getVideoTracks()[0],
-              peer.streams[0]
-            );
-          });
-        }
-      } else {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        screenShareRef.current.srcObject = screenStream;
-        Object.values(peersRef.current).forEach(peer => {
-          peer.replaceTrack(
-            peer.streams[0].getVideoTracks()[0],
-            screenStream.getVideoTracks()[0],
-            peer.streams[0]
-          );
-        });
-        screenStream.getVideoTracks()[0].onended = () => toggleScreenShare();
-      }
-      setIsScreenSharing(!isScreenSharing);
-    } catch (error) {
-      toast.error("Screen sharing failed");
-      console.error("Screen share error:", error);
+  const handleEditClass = () => {
+    if (classTitle && classDate && classTime) {
+      const updatedClasses = scheduledClasses.map(cls => 
+        cls.id === editingClass.id ? { 
+          ...cls, 
+          title: classTitle,
+          date: classDate,
+          time: classTime,
+          description: classDescription,
+          duration: classDuration
+        } : cls
+      );
+      setScheduledClasses(updatedClasses);
+      resetForm();
+      setModalVisible(false);
+    } else {
+      alert('Please fill in all required fields');
     }
   };
 
-  // End class
-  const endClass = () => {
-    setIsClassActive(false);
-    peerRef.current.destroy();
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+  const handleDeleteClass = (id) => {
+    if (window.confirm('Are you sure you want to delete this class?')) {
+      setScheduledClasses(scheduledClasses.filter(cls => cls.id !== id));
     }
-    toast.success("Class ended successfully");
   };
 
-  // Copy invite link
-  const copyClassLink = () => {
-    navigator.clipboard.writeText(
-      `${window.location.origin}/student?classId=${peerRef.current.id}`
-    );
-    toast.info("Invite link copied!");
+  const resetForm = () => {
+    setClassTitle('');
+    setClassDate('');
+    setClassTime('');
+    setClassDescription('');
+    setClassDuration('60');
+    setEditingClass(null);
   };
 
-  // Send message
-  const sendMessage = () => {
-    if (!newMessage.trim()) return;
-    
-    const messageData = {
-      sender: 'Teacher',
-      message: newMessage,
-      timestamp: new Date().toLocaleTimeString()
-    };
-
-    Object.values(peersRef.current).forEach(peer => {
-      peer.connection.send(messageData);
-    });
-
-    setMessages(prev => [...prev, messageData]);
-    setNewMessage('');
+  const openEditModal = (liveClass) => {
+    setClassTitle(liveClass.title);
+    setClassDate(liveClass.date);
+    setClassTime(liveClass.time);
+    setClassDescription(liveClass.description);
+    setClassDuration(liveClass.duration);
+    setEditingClass(liveClass);
+    setModalVisible(true);
   };
 
-  if (!isClassActive) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-richblack-900">
-        <div className="text-center p-8 bg-richblack-800 rounded-lg border border-richblack-700">
-          <h2 className="text-2xl font-bold text-electricBlue mb-4">Class Ended</h2>
-          <p className="text-richblack-300">You have successfully ended the class session.</p>
-        </div>
-      </div>
-    );
-  }
+  const formatDate = (dateString) => {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-richblack-900 text-richblack-5">
-      {/* Header */}
-      <header className="flex items-center justify-between p-4 bg-richblack-800 border-b border-richblack-700">
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${mediaError ? 'bg-red-500' : 'bg-green-500'}`}></div>
-          <h1 className="text-xl font-semibold">Live Classroom - Teacher</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-sm bg-richblack-700 px-3 py-1 rounded-full">
-            {students.length} {students.length === 1 ? 'Student' : 'Students'}
-          </span>
-          <button 
-            onClick={copyClassLink}
-            className="flex items-center space-x-2 px-4 py-2 bg-electricBlue text-richblack-900 rounded-md hover:bg-opacity-80 transition-all"
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 text-gray-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        <motion.h1 
+          className="text-4xl md:text-5xl font-bold text-center text-[#2C3E50] mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          Teacher Dashboard
+        </motion.h1>
+
+        {/* Action Bar */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+          <div className="text-xl font-semibold text-[#2C3E50]">
+            <FaChalkboardTeacher className="inline mr-2" />
+            My Scheduled Classes
+          </div>
+          <motion.button
+            onClick={() => {
+              resetForm();
+              setModalVisible(true);
+            }}
+            className="bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] text-white px-6 py-3 rounded-full flex items-center gap-2 hover:shadow-lg transition-all"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <CopyIcon size={18} />
-            <span>Invite</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Video Area */}
-        <div className="flex-1 flex flex-col bg-richblack-950 relative">
-          {/* Teacher Video */}
-          <div className="relative flex-1 bg-richblack-800 flex items-center justify-center">
-            {isCameraOn ? (
-              <video 
-                ref={teacherVideoRef}
-                autoPlay 
-                muted 
-                className="h-full w-full object-contain bg-richblack-900"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full w-full bg-richblack-800">
-                <div className="w-32 h-32 rounded-full bg-richblack-700 flex items-center justify-center mb-4">
-                  <VideoOffIcon className="h-12 w-12 text-richblack-400" />
-                </div>
-                <p className="text-richblack-300">Camera is disabled</p>
-              </div>
-            )}
-
-            {/* Screen Share Indicator */}
-            {isScreenSharing && (
-              <div className="absolute top-4 left-4 bg-richblack-800 bg-opacity-70 px-3 py-1 rounded-full text-sm flex items-center">
-                <ScreenShareIcon className="mr-2" size={16} />
-                Screen Sharing
-              </div>
-            )}
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center justify-center space-x-6 p-4 bg-richblack-800 border-t border-richblack-700">
-            <button
-              onClick={() => toggleMedia('audio')}
-              className={`p-3 rounded-full ${isMicOn ? 'bg-richblack-700 text-electricBlue' : 'bg-red-500 text-richblack-5'} transition-colors`}
-              aria-label={isMicOn ? "Mute microphone" : "Unmute microphone"}
-            >
-              {isMicOn ? <MicIcon size={20} /> : <MicOffIcon size={20} />}
-            </button>
-            
-            <button
-              onClick={() => toggleMedia('video')}
-              className={`p-3 rounded-full ${isCameraOn ? 'bg-richblack-700 text-electricBlue' : 'bg-richblack-700 text-richblack-400'} transition-colors`}
-              aria-label={isCameraOn ? "Turn off camera" : "Turn on camera"}
-            >
-              {isCameraOn ? <VideoIcon size={20} /> : <VideoOffIcon size={20} />}
-            </button>
-            
-            <button
-              onClick={toggleScreenShare}
-              className={`p-3 rounded-full ${isScreenSharing ? 'bg-electricBlue text-richblack-900' : 'bg-richblack-700 text-richblack-400'} transition-colors`}
-              aria-label={isScreenSharing ? "Stop screen share" : "Start screen share"}
-            >
-              {isScreenSharing ? <ScreenShareIcon size={20} /> : <ScreenShareIcon size={20} />}
-            </button>
-            
-            <button
-              onClick={endClass}
-              className="p-3 rounded-full bg-red-500 text-richblack-5 hover:bg-red-600 transition-colors"
-              aria-label="End class"
-            >
-              <EndCallIcon size={20} />
-            </button>
-          </div>
+            <FaPlusCircle className="text-xl" />
+            Schedule New Class
+          </motion.button>
         </div>
 
-        {/* Sidebar */}
-        <div className="w-96 flex flex-col border-l border-richblack-700 bg-richblack-800">
-          {/* Students List */}
-          <div className="p-4 border-b border-richblack-700">
-            <h2 className="flex items-center space-x-2 font-medium text-lg">
-              <UsersIcon size={20} />
-              <span>Participants</span>
-              <span className="ml-auto bg-richblack-700 text-richblack-100 px-2 py-1 rounded-full text-sm">
-                {students.length} online
-              </span>
-            </h2>
-            <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
-              {students.length > 0 ? (
-                students.map(student => (
-                  <div key={student.id} className="flex items-center space-x-3 p-2 hover:bg-richblack-750 rounded-lg transition-colors">
-                    <video 
-                      autoPlay 
-                      className="w-10 h-10 rounded-full bg-richblack-700 object-cover"
-                      ref={el => el && (el.srcObject = student.stream)}
-                    />
-                    <div>
-                      <p className="font-medium">{student.name}</p>
-                      <p className="text-xs text-richblack-400">Active now</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-center text-richblack-400 py-4">No students joined yet</p>
-              )}
-            </div>
-          </div>
-
-          {/* Chat */}
-          <div className="flex-1 flex flex-col">
-            <div className="p-4 border-b border-richblack-700">
-              <h2 className="flex items-center space-x-2 font-medium text-lg">
-                <MessageIcon size={20} />
-                <span>Class Chat</span>
-              </h2>
-            </div>
-            
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {messages.length > 0 ? (
-                messages.map((msg, i) => (
-                  <div 
-                    key={i} 
-                    className={`flex ${msg.sender === 'Teacher' ? 'justify-end' : 'justify-start'}`}
+        {/* Class Grid */}
+        {scheduledClasses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {scheduledClasses.map((liveClass) => (
+              <motion.div
+                key={liveClass.id}
+                className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 relative"
+                whileHover={{ y: -5 }}
+                layout
+              >
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <button 
+                    onClick={() => openEditModal(liveClass)}
+                    className="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-colors"
                   >
-                    <div className={`max-w-xs rounded-lg p-3 ${msg.sender === 'Teacher' ? 'bg-electricBlue text-richblack-900' : 'bg-richblack-700'}`}>
-                      <p className="font-medium text-sm">{msg.sender}</p>
-                      <p className="mt-1">{msg.message}</p>
-                      <p className="text-xs opacity-70 mt-1 text-right">{msg.timestamp}</p>
+                    <FaEdit />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteClass(liveClass.id)}
+                    className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
+                  >
+                    <FaTrash />
+                  </button>
+                </div>
+
+                <div className="p-6">
+                  <h2 className="text-2xl font-bold text-[#2C3E50] mb-2">{liveClass.title}</h2>
+                  <p className="text-gray-600 mb-4">{liveClass.description}</p>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-gray-700">
+                      <FaCalendarCheck className="text-[#2EC4B6]" />
+                      <span>{formatDate(liveClass.date)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-gray-700">
+                      <FaClock className="text-[#2EC4B6]" />
+                      <span>{liveClass.time} (Duration: {liveClass.duration} mins)</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-gray-700">
+                      <FaUser className="text-[#2EC4B6]" />
+                      <span>{liveClass.students} students enrolled</span>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-richblack-400">No messages yet</p>
+
+                  <div className="mt-6 flex justify-between items-center">
+                    <button className="text-sm text-[#2EC4B6] hover:underline">
+                      View Attendance
+                    </button>
+                    <button className="bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] text-white px-4 py-2 rounded-lg text-sm">
+                      Start Class
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Message Input */}
-            <div className="p-4 border-t border-richblack-700">
-              <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex space-x-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-richblack-700 border border-richblack-600 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-electricBlue focus:border-transparent"
-                />
-                <button
-                  type="submit"
-                  disabled={!newMessage.trim()}
-                  className="px-4 py-2 bg-electricBlue text-richblack-900 rounded-md hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                >
-                  Send
-                </button>
-              </form>
-            </div>
+              </motion.div>
+            ))}
           </div>
-        </div>
-      </div>
+        ) : (
+          <motion.div 
+            className="bg-white rounded-xl p-8 text-center shadow-lg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <h3 className="text-xl font-semibold text-gray-600 mb-4">No classes scheduled yet</h3>
+            <p className="text-gray-500 mb-6">Click the button above to schedule your first live class</p>
+            <button
+              onClick={() => setModalVisible(true)}
+              className="bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] text-white px-6 py-2 rounded-full inline-flex items-center gap-2"
+            >
+              <FaPlusCircle />
+              Schedule Class
+            </button>
+          </motion.div>
+        )}
 
-      {/* Error Notification */}
-      {mediaError && (
-        <div className="absolute bottom-4 left-4 bg-red-500 text-richblack-5 px-4 py-2 rounded-md flex items-center space-x-2">
-          <AlertIcon size={18} />
-          <span>{mediaError}</span>
-        </div>
-      )}
+        {/* Add/Edit Class Modal */}
+        <AnimatePresence>
+          {modalVisible && (
+            <motion.div 
+              className="fixed inset-0 bg-black/50 flex justify-center items-center p-4 z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div 
+                className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+              >
+                <div className="bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] p-6 text-white">
+                  <h3 className="text-2xl font-bold">
+                    {editingClass ? 'Edit Class' : 'Schedule New Class'}
+                  </h3>
+                </div>
+
+                <form onSubmit={(e) => e.preventDefault()} className="p-6 space-y-5">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">Class Title*</label>
+                    <input
+                      type="text"
+                      value={classTitle}
+                      onChange={(e) => setClassTitle(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
+                      placeholder="Enter class title"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">Date*</label>
+                      <input
+                        type="date"
+                        value={classDate}
+                        onChange={(e) => setClassDate(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">Time*</label>
+                      <input
+                        type="time"
+                        value={classTime}
+                        onChange={(e) => setClassTime(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">Duration (minutes)</label>
+                    <select
+                      value={classDuration}
+                      onChange={(e) => setClassDuration(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
+                    >
+                      <option value="30">30 mins</option>
+                      <option value="60">60 mins</option>
+                      <option value="90">90 mins</option>
+                      <option value="120">120 mins</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      value={classDescription}
+                      onChange={(e) => setClassDescription(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
+                      placeholder="Brief description of the class"
+                      rows="3"
+                    />
+                  </div>
+
+                  <div className="pt-4 flex justify-end gap-3">
+                    <button
+                      onClick={() => {
+                        resetForm();
+                        setModalVisible(false);
+                      }}
+                      className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={editingClass ? handleEditClass : handleAddClass}
+                      className="px-6 py-2 bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] text-white rounded-lg hover:shadow-md"
+                    >
+                      {editingClass ? 'Save Changes' : 'Add Class'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
