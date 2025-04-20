@@ -83,3 +83,7 @@ export const settingsEndpoints = {
 export const adminEndpoints = {
   ALL_STUDENT : BASE_URL + "/profile/students",
 }
+
+export const aiChatbotEndpoints = {
+  AI_CHATBOT : BASE_URL + "/ai/chatbot/ask"
+}
