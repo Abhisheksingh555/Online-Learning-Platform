@@ -20,6 +20,8 @@ import { FaArrowRight } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { fadeIn } from "./../components/common/motionFrameVarients";
 
+import AllCourse from "./AllCourse";
+
 // background random images
 import backgroundImg1 from "../assets/Images/random bg img/coding bg1.jpg";
 import backgroundImg2 from "../assets/Images/random bg img/coding bg2.jpg";
@@ -277,77 +279,8 @@ export default AbhiiLearnApp;`,
           </motion.div>
 
           {/* course slider */}
-          <div className="mx-auto box-content w-full max-w-maxContentTab px- py-12 lg:max-w-maxContent">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-2 h-8 bg-yellow-400 rounded-full"></div>
-              <h2 className="text-white text-2xl font-bold">
-                Trending in Tech Right Now
-              </h2>
-            </div>
-            <p className="text-richblack-300 mb-6 max-w-2xl">
-              These are the skills employers are looking for today. Master them
-              to stay ahead in your career.
-            </p>
-            <Course_Slider Courses={CatalogPageData?.trendingCourses} />
-          </div>
-          <div className="mx-auto box-content w-full max-w-maxContentTab px- py-12 lg:max-w-maxContent">
-            <h2 className="text-white mb-6 text-2xl flex items-center gap-2">
-              <span className="text-yellow-400">✦</span> Start Your Journey Here
-            </h2>
-            <p className="text-richblack-300 mb-6 max-w-2xl">
-              Perfect for beginners - these learning paths will take you from
-              zero to job-ready.
-            </p>
-            <Course_Slider Courses={CatalogPageData?.beginnerCourses} />
-          </div>
-          <div className="mx-auto box-content w-full max-w-maxContentTab px- py-12 lg:max-w-maxContent">
-            <div className="mb-6">
-              <span className="inline-block px-3 py-1 bg-yellow-400 text-richblack-900 rounded-full text-sm font-bold mb-2">
-                CAREER BOOST
-              </span>
-              <h2 className="text-white text-2xl font-bold">
-                Fast-Track Your Career Growth
-              </h2>
-            </div>
-            <Course_Slider
-              Courses={CatalogPageData?.careerAcceleratorCourses}
-            />
-          </div>
-          <div className="mx-auto box-content w-full max-w-maxContentTab px- py-12 lg:max-w-maxContent">
-            <h2 className="text-white mb-6 text-2xl">
-              <span className="text-yellow-400">Build</span> While You Learn
-            </h2>
-            <p className="text-richblack-300 mb-6 max-w-2xl">
-              Courses with hands-on projects to build your portfolio as you
-              learn.
-            </p>
-            <Course_Slider Courses={CatalogPageData?.projectBasedCourses} />
-          </div>
-          <div className="mx-auto box-content w-full max-w-maxContentTab px- py-12 lg:max-w-maxContent">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="text-2xl">👑</div>
-              <h2 className="text-white text-2xl font-bold">
-                Loved by Our Community
-              </h2>
-            </div>
-            <p className="text-richblack-300 mb-6 max-w-2xl">
-              These courses have the highest satisfaction ratings from thousands
-              of students.
-            </p>
-            <Course_Slider Courses={CatalogPageData?.highestRatedCourses} />
-          </div>
-          <div className="mx-auto box-content w-full max-w-maxContentTab px- py-12 lg:max-w-maxContent">
-            <div className="mb-6">
-              <span className="inline-block px-3 py-1 bg-blue-400 text-richblack-900 rounded-full text-sm font-bold mb-2">
-                NEW
-              </span>
-              <h2 className="text-white text-2xl font-bold">
-                Fresh Learning Opportunities
-              </h2>
-            </div>
-            <Course_Slider Courses={CatalogPageData?.newlyAddedCourses} />
-          </div>
 
+          <AllCourse/>
           <ExploreMore />
         </div>
 
