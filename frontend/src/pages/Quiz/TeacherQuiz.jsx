@@ -1,331 +1,432 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 const TeacherQuiz = () => {
+  // Tab state
   const [activeTab, setActiveTab] = useState('create');
+  
+  // Quiz form state
   const [quizTitle, setQuizTitle] = useState('');
   const [quizDescription, setQuizDescription] = useState('');
   const [quizDuration, setQuizDuration] = useState(30);
   const [scheduledDate, setScheduledDate] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [questions, setQuestions] = useState([{ text: '', options: ['', '', '', ''], correctAnswer: 0 }]);
-  const [uploadOption, setUploadOption] = useState('text');
-  const [quizFile, setQuizFile] = useState(null);
+  const [questions, setQuestions] = useState([{ 
+    id: uuidv4(),
+    text: '', 
+    options: ['', '', '', ''], 
+    correctAnswer: 0 
+  }]);
+  
+  // Quiz management state
   const [quizzes, setQuizzes] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const handleAddQuestion = () => {
-    setQuestions([...questions, { text: '', options: ['', '', '', ''], correctAnswer: 0 }]);
+  // Helper function to validate quiz
+  const validateQuiz = () => {
+    const newErrors = {};
+    
+    if (!quizTitle.trim()) newErrors.quizTitle = 'Quiz title is required';
+    if (quizDuration < 1) newErrors.quizDuration = 'Duration must be at least 1 minute';
+    if (!scheduledDate) newErrors.scheduledDate = 'Scheduled date is required';
+    if (!dueDate) newErrors.dueDate = 'Due date is required';
+    if (new Date(dueDate) <= new Date(scheduledDate)) {
+      newErrors.dueDate = 'Due date must be after scheduled date';
+    }
+    
+    questions.forEach((q, qIndex) => {
+      if (!q.text.trim()) newErrors[`question-${qIndex}`] = 'Question text is required';
+      
+      q.options.forEach((opt, oIndex) => {
+        if (!opt.trim()) newErrors[`option-${qIndex}-${oIndex}`] = 'Option cannot be empty';
+      });
+    });
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleRemoveQuestion = (index) => {
+  // Question handlers
+  const handleAddQuestion = () => {
+    setQuestions([
+      ...questions, 
+      { 
+        id: uuidv4(),
+        text: '', 
+        options: ['', '', '', ''], 
+        correctAnswer: 0 
+      }
+    ]);
+  };
+
+  const handleRemoveQuestion = (id) => {
     if (questions.length > 1) {
-      const newQuestions = [...questions];
-      newQuestions.splice(index, 1);
-      setQuestions(newQuestions);
+      setQuestions(questions.filter(q => q.id !== id));
     }
   };
 
-  const handleQuestionChange = (index, field, value) => {
-    const newQuestions = [...questions];
-    newQuestions[index][field] = value;
-    setQuestions(newQuestions);
+  const handleQuestionChange = (id, field, value) => {
+    setQuestions(questions.map(q => 
+      q.id === id ? { ...q, [field]: value } : q
+    ));
   };
 
-  const handleOptionChange = (qIndex, oIndex, value) => {
-    const newQuestions = [...questions];
-    newQuestions[qIndex].options[oIndex] = value;
-    setQuestions(newQuestions);
+  const handleOptionChange = (qId, oIndex, value) => {
+    setQuestions(questions.map(q => {
+      if (q.id === qId) {
+        const newOptions = [...q.options];
+        newOptions[oIndex] = value;
+        return { ...q, options: newOptions };
+      }
+      return q;
+    }));
   };
 
-  const handleCorrectAnswerChange = (qIndex, oIndex) => {
-    const newQuestions = [...questions];
-    newQuestions[qIndex].correctAnswer = oIndex;
-    setQuestions(newQuestions);
+  const handleCorrectAnswerChange = (qId, oIndex) => {
+    setQuestions(questions.map(q => 
+      q.id === qId ? { ...q, correctAnswer: oIndex } : q
+    ));
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) setQuizFile(file);
-  };
-
+  // Quiz submission
   const handleSubmitQuiz = (e) => {
     e.preventDefault();
+    
+    if (!validateQuiz()) return;
+    
     const newQuiz = {
-      id: Date.now(),
+      id: uuidv4(),
       title: quizTitle,
       description: quizDescription,
       duration: quizDuration,
       questions: questions.filter(q => q.text.trim() !== ''),
       scheduledAt: scheduledDate,
       dueAt: dueDate,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      status: 'draft'
     };
+    
     setQuizzes([...quizzes, newQuiz]);
+    resetForm();
+    setSuccessMessage('Quiz created successfully!');
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  const resetForm = () => {
     setQuizTitle('');
     setQuizDescription('');
     setQuizDuration(30);
     setScheduledDate('');
     setDueDate('');
-    setQuestions([{ text: '', options: ['', '', '', ''], correctAnswer: 0 }]);
-    alert('Quiz created successfully!');
+    setQuestions([{ 
+      id: uuidv4(),
+      text: '', 
+      options: ['', '', '', ''], 
+      correctAnswer: 0 
+    }]);
+    setErrors({});
   };
 
+  // Quiz management actions
   const handlePublishQuiz = (quizId) => {
-    alert(`Quiz ${quizId} published to students!`);
+    setQuizzes(quizzes.map(q => 
+      q.id === quizId ? { ...q, status: 'published' } : q
+    ));
+    setSuccessMessage('Quiz published to students!');
+    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   const handleDeleteQuiz = (quizId) => {
     setQuizzes(quizzes.filter(q => q.id !== quizId));
   };
 
+  // Format date for display
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString();
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8 text-richblack-5">
+    <div className="container mx-auto px-4 py-8 text-richblack-5 max-w-6xl">
       <h1 className="text-3xl font-bold mb-8 text-richblack-5">Quiz Management</h1>
 
+      {/* Success message */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-600 text-white rounded-lg">
+          {successMessage}
+        </div>
+      )}
+
+      {/* Tab Navigation */}
       <div className="flex border-b border-richblack-700 mb-6">
-        <button
-          className={`py-2 px-4 font-medium ${activeTab === 'create' ? 'text-[#00A1E4] border-b-2 border-[#00A1E4]' : 'text-richblack-300'}`}
-          onClick={() => setActiveTab('create')}
-        >
-          Create New Quiz
-        </button>
-        <button
-          className={`py-2 px-4 font-medium ${activeTab === 'manage' ? 'text-[#00A1E4] border-b-2 border-[#00A1E4]' : 'text-richblack-300'}`}
-          onClick={() => setActiveTab('manage')}
-        >
-          Manage Quizzes
-        </button>
+        {['create', 'manage'].map((tab) => (
+          <button
+            key={tab}
+            className={`py-2 px-4 font-medium transition-all duration-300 ${
+              activeTab === tab
+                ? 'text-[#00A1E4] border-b-2 border-[#00A1E4]'
+                : 'text-richblack-300 hover:text-[#00A1E4]'
+            }`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab === 'create' ? 'Create New Quiz' : 'Manage Quizzes'}
+          </button>
+        ))}
       </div>
 
+      {/* Tab Content */}
       {activeTab === 'create' ? (
-        <div className="bg-richblack-800 rounded-lg shadow-md p-6 border border-richblack-700">
-          <h2 className="text-xl font-semibold mb-4 text-richblack-5">Create New Quiz</h2>
+        <div className="bg-richblack-800 rounded-lg shadow-lg p-6 border border-richblack-700">
+          <h2 className="text-xl font-semibold mb-6 text-richblack-5">Create New Quiz</h2>
 
-          <div className="mb-6">
-            <label className="block text-richblack-300 mb-2">Upload Method</label>
-            <div className="flex space-x-4">
-              <button
-                className={`px-4 py-2 rounded ${uploadOption === 'text' ? 'bg-[#00A1E4] text-white' : 'bg-richblack-600 text-richblack-300'}`}
-                onClick={() => setUploadOption('text')}
-              >
-                Enter Questions
-              </button>
-              <button
-                className={`px-4 py-2 rounded ${uploadOption === 'file' ? 'bg-[#00A1E4] text-white' : 'bg-richblack-600 text-richblack-300'}`}
-                onClick={() => setUploadOption('file')}
-              >
-                Upload File
-              </button>
-            </div>
-          </div>
-
+          {/* Form */}
           <form onSubmit={handleSubmitQuiz}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Quiz Title */}
               <div>
-                <label className="block text-richblack-300 mb-2">Quiz Title</label>
+                <label className="block text-richblack-300 mb-2">Quiz Title *</label>
                 <input
                   type="text"
-                  className="w-full px-4 py-2 border border-richblack-700 bg-richblack-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A1E4]"
+                  className={`w-full px-4 py-2 rounded-lg border ${
+                    errors.quizTitle ? 'border-red-500' : 'border-richblack-700'
+                  } bg-richblack-700 text-white focus:outline-none focus:ring-2 focus:ring-[#00A1E4]`}
                   value={quizTitle}
                   onChange={(e) => setQuizTitle(e.target.value)}
-                  required
                 />
+                {errors.quizTitle && (
+                  <p className="text-red-400 text-sm mt-1">{errors.quizTitle}</p>
+                )}
               </div>
+              
+              {/* Duration */}
               <div>
-                <label className="block text-richblack-300 mb-2">Duration (minutes)</label>
+                <label className="block text-richblack-300 mb-2">Duration (minutes) *</label>
                 <input
                   type="number"
-                  className="w-full px-4 py-2 border border-richblack-700 bg-richblack-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A1E4]"
-                  value={quizDuration}
-                  onChange={(e) => setQuizDuration(e.target.value)}
                   min="1"
-                  required
+                  className={`w-full px-4 py-2 rounded-lg border ${
+                    errors.quizDuration ? 'border-red-500' : 'border-richblack-700'
+                  } bg-richblack-700 text-white focus:outline-none focus:ring-2 focus:ring-[#00A1E4]`}
+                  value={quizDuration}
+                  onChange={(e) => setQuizDuration(Math.max(1, e.target.value))}
                 />
+                {errors.quizDuration && (
+                  <p className="text-red-400 text-sm mt-1">{errors.quizDuration}</p>
+                )}
               </div>
+              
+              {/* Scheduled Date */}
               <div>
-                <label className="block text-richblack-300 mb-2">Scheduled Date</label>
+                <label className="block text-richblack-300 mb-2">Scheduled Date *</label>
                 <input
                   type="datetime-local"
-                  className="w-full px-4 py-2 border border-richblack-700 bg-richblack-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A1E4]"
+                  className={`w-full px-4 py-2 rounded-lg border ${
+                    errors.scheduledDate ? 'border-red-500' : 'border-richblack-700'
+                  } bg-richblack-700 text-white focus:outline-none focus:ring-2 focus:ring-[#00A1E4]`}
                   value={scheduledDate}
                   onChange={(e) => setScheduledDate(e.target.value)}
-                  required
                 />
+                {errors.scheduledDate && (
+                  <p className="text-red-400 text-sm mt-1">{errors.scheduledDate}</p>
+                )}
               </div>
+              
+              {/* Due Date */}
               <div>
-                <label className="block text-richblack-300 mb-2">Due Date</label>
+                <label className="block text-richblack-300 mb-2">Due Date *</label>
                 <input
                   type="datetime-local"
-                  className="w-full px-4 py-2 border border-richblack-700 bg-richblack-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A1E4]"
+                  className={`w-full px-4 py-2 rounded-lg border ${
+                    errors.dueDate ? 'border-red-500' : 'border-richblack-700'
+                  } bg-richblack-700 text-white focus:outline-none focus:ring-2 focus:ring-[#00A1E4]`}
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  required
+                  min={scheduledDate}
                 />
+                {errors.dueDate && (
+                  <p className="text-red-400 text-sm mt-1">{errors.dueDate}</p>
+                )}
               </div>
             </div>
 
+            {/* Description */}
             <div className="mb-6">
-              <label className="block text-richblack-300 mb-2">Description</label>
+              <label className="block text-richblack-300 mb-2">Quiz Description</label>
               <textarea
-                className="w-full px-4 py-2 border border-richblack-700 bg-richblack-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A1E4]"
                 rows="3"
+                className="w-full px-4 py-2 rounded-lg border border-richblack-700 bg-richblack-700 text-white focus:outline-none focus:ring-2 focus:ring-[#00A1E4]"
                 value={quizDescription}
                 onChange={(e) => setQuizDescription(e.target.value)}
               />
             </div>
 
-            {uploadOption === 'text' ? (
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-richblack-5">Questions</h3>
-                  <button
-                    type="button"
-                    onClick={handleAddQuestion}
-                    className="bg-[#2EC4B6] hover:bg-teal-500 text-white px-4 py-2 rounded transition duration-200"
-                  >
-                    Add Question
-                  </button>
-                </div>
+            {/* Questions */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-richblack-5">Questions *</h3>
+                <button
+                  type="button"
+                  onClick={handleAddQuestion}
+                  className="bg-[#2EC4B6] hover:bg-teal-500 text-white px-4 py-2 rounded-lg transition-all duration-300"
+                >
+                  Add Question
+                </button>
+              </div>
 
-                <div className="space-y-6">
-                  {questions.map((question, qIndex) => (
-                    <div key={qIndex} className="border border-richblack-700 rounded-lg p-4 bg-richblack-700">
-                      <div className="flex justify-between mb-3">
-                        <span className="font-medium text-richblack-5">Question {qIndex + 1}</span>
-                        {questions.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveQuestion(qIndex)}
-                            className="text-red-400 hover:text-red-600"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
+              {/* Question List */}
+              <div className="space-y-6">
+                {questions.map((question, qIndex) => (
+                  <div key={question.id} className="p-4 rounded-lg border border-richblack-700 bg-richblack-700">
+                    <div className="flex justify-between mb-4">
+                      <span className="font-medium text-richblack-5">Question {qIndex + 1}</span>
+                      {questions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveQuestion(question.id)}
+                          className="text-red-400 hover:text-red-600"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
 
-                      <div className="mb-4">
-                        <label className="block text-richblack-300 mb-2">Question Text</label>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 border border-richblack-600 bg-richblack-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A1E4]"
-                          value={question.text}
-                          onChange={(e) => handleQuestionChange(qIndex, 'text', e.target.value)}
-                          required
-                        />
-                      </div>
+                    {/* Question Text */}
+                    <div className="mb-4">
+                      <label className="block text-richblack-300 mb-2">Question Text *</label>
+                      <input
+                        type="text"
+                        className={`w-full px-4 py-2 rounded-lg border ${
+                          errors[`question-${qIndex}`] ? 'border-red-500' : 'border-richblack-600'
+                        } bg-richblack-800 text-white focus:outline-none focus:ring-2 focus:ring-[#00A1E4]`}
+                        value={question.text}
+                        onChange={(e) => handleQuestionChange(question.id, 'text', e.target.value)}
+                      />
+                      {errors[`question-${qIndex}`] && (
+                        <p className="text-red-400 text-sm mt-1">{errors[`question-${qIndex}`]}</p>
+                      )}
+                    </div>
 
-                      <div className="mb-4">
-                        <label className="block text-richblack-300 mb-2">Options</label>
-                        <div className="space-y-2">
-                          {question.options.map((option, oIndex) => (
-                            <div key={oIndex} className="flex items-center gap-3">
-                              <input
-                                type="radio"
-                                name={`correctAnswer-${qIndex}`}
-                                className="accent-[#00A1E4]"
-                                checked={question.correctAnswer === oIndex}
-                                onChange={() => handleCorrectAnswerChange(qIndex, oIndex)}
-                              />
-                              <input
-                                type="text"
-                                className="flex-1 px-4 py-2 border border-richblack-600 bg-richblack-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A1E4]"
-                                value={option}
-                                onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)}
-                                required
-                              />
-                            </div>
-                          ))}
-                        </div>
+                    {/* Options */}
+                    <div>
+                      <label className="block text-richblack-300 mb-2">Options *</label>
+                      <div className="space-y-2">
+                        {question.options.map((option, oIndex) => (
+                          <div key={oIndex} className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name={`correctAnswer-${question.id}`}
+                              className="accent-[#00A1E4]"
+                              checked={question.correctAnswer === oIndex}
+                              onChange={() => handleCorrectAnswerChange(question.id, oIndex)}
+                            />
+                            <input
+                              type="text"
+                              className={`flex-1 px-4 py-2 rounded-lg border ${
+                                errors[`option-${qIndex}-${oIndex}`] ? 'border-red-500' : 'border-richblack-600'
+                              } bg-richblack-800 text-white focus:outline-none focus:ring-2 focus:ring-[#00A1E4]`}
+                              value={option}
+                              onChange={(e) => handleOptionChange(question.id, oIndex, e.target.value)}
+                              placeholder={`Option ${oIndex + 1}`}
+                            />
+                            {errors[`option-${qIndex}-${oIndex}`] && (
+                              <p className="text-red-400 text-sm ml-2">{errors[`option-${qIndex}-${oIndex}`]}</p>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <div className="mb-6">
-                <label className="block text-richblack-300 mb-2">Upload Quiz File</label>
-                <div className="border-2 border-dashed border-richblack-600 rounded-lg p-6 text-center text-richblack-300">
-                  <input
-                    type="file"
-                    className="hidden"
-                    id="quizFile"
-                    accept=".pdf,.txt"
-                    onChange={handleFileUpload}
-                  />
-                  <label htmlFor="quizFile" className="cursor-pointer">
-                    <div className="flex flex-col items-center justify-center">
-                      <p className="mb-1">
-                        {quizFile ? quizFile.name : 'Click to upload or drag and drop'}
-                      </p>
-                      <p className="text-sm text-richblack-400">PDF or TEXT file</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            )}
+            </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="bg-richblack-600 hover:bg-richblack-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300"
+              >
+                Reset Form
+              </button>
               <button
                 type="submit"
-                className="bg-[#2EC4B6] hover:bg-teal-500 text-white font-medium py-2 px-6 rounded transition duration-200"
+                className="bg-[#00A1E4] hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300"
               >
-                Save Quiz
+                Create Quiz
               </button>
             </div>
           </form>
         </div>
       ) : (
-        <div>
-          <h2 className="text-xl font-semibold mb-4 text-richblack-5">Your Quizzes</h2>
+        <div className="bg-richblack-800 rounded-lg shadow-lg p-6 border border-richblack-700">
+          <h2 className="text-xl font-semibold mb-6 text-richblack-5">Manage Existing Quizzes</h2>
+          
           {quizzes.length === 0 ? (
-            <div className="bg-richblack-800 rounded-lg shadow-md p-8 border border-richblack-700 text-center text-richblack-300">
-              <p>No quizzes created yet.</p>
-            </div>
+            <p className="text-richblack-300">No quizzes created yet.</p>
           ) : (
-            <div className="bg-richblack-800 rounded-lg shadow-md overflow-hidden border border-richblack-700">
-              <table className="min-w-full divide-y divide-richblack-600 text-richblack-300">
-                <thead className="bg-richblack-700 text-richblack-300">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Title</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Questions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Duration</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Scheduled</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-richblack-600">
-                  {quizzes.map((quiz) => (
-                    <tr key={quiz.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-white">{quiz.title}</div>
-                        <div className="text-sm text-richblack-400">{quiz.description}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{quiz.questions.length}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{quiz.duration} mins</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{new Date(quiz.scheduledAt).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#00A1E4] text-white">
-                          Draft
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+            <div className="space-y-4">
+              {quizzes.map((quiz) => (
+                <div
+                  key={quiz.id}
+                  className="border border-richblack-600 p-4 rounded-lg bg-richblack-700"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="text-lg font-semibold text-richblack-5">{quiz.title}</h3>
+                      <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                        quiz.status === 'published' 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-yellow-600 text-white'
+                      }`}>
+                        {quiz.status}
+                      </span>
+                    </div>
+                    <div className="space-x-2">
+                      {quiz.status !== 'published' && (
                         <button
                           onClick={() => handlePublishQuiz(quiz.id)}
-                          className="text-[#2EC4B6] hover:text-teal-400 mr-4"
+                          className="bg-[#00A1E4] hover:bg-blue-600 text-white px-3 py-1 rounded-md"
                         >
                           Publish
                         </button>
-                        <button
-                          onClick={() => handleDeleteQuiz(quiz.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                      <button
+                        onClick={() => handleDeleteQuiz(quiz.id)}
+                        className="bg-red-500 hover:bg-red-700 text-white px-3 py-1 rounded-md"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-richblack-300 mb-2">{quiz.description}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-richblack-400">
+                    <p>Duration: {quiz.duration} min</p>
+                    <p>Scheduled: {formatDate(quiz.scheduledAt)}</p>
+                    <p>Due: {formatDate(quiz.dueAt)}</p>
+                  </div>
+                  {quiz.questions.length > 0 && (
+                    <details className="mt-3">
+                      <summary className="text-sm text-[#00A1E4] cursor-pointer">
+                        View Questions ({quiz.questions.length})
+                      </summary>
+                      <div className="mt-2 space-y-3 pl-4">
+                        {quiz.questions.map((q, idx) => (
+                          <div key={idx} className="border-l-2 border-richblack-500 pl-3">
+                            <p className="font-medium text-richblack-100">{q.text}</p>
+                            <ul className="list-disc pl-5 text-richblack-300">
+                              {q.options.map((opt, optIdx) => (
+                                <li key={optIdx} className={optIdx === q.correctAnswer ? 'text-green-400' : ''}>
+                                  {opt} {optIdx === q.correctAnswer && '(Correct)'}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

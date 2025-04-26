@@ -202,7 +202,7 @@ function App() {
               <Route path="dashboard/my-courses" element={<MyCourses />} />
               <Route path="dashboard/assignment" element={<TeacherAssignment />} />
               <Route path="dashboard/liveclass" element={<LiveClassTeacher/>} />
-              <Route path="dashboard/gamification" element={<TeacherQuiz/>} />
+              <Route path="dashboard/Quiz" element={<TeacherQuiz/>} />
               <Route
                 path="dashboard/edit-course/:courseId"
                 element={<EditCourse />}

@@ -107,8 +107,8 @@ export const sidebarLinks = [
   },
   {
     id: 16,
-    name: "Gamification",
-    path: "/dashboard/gamification",
+    name: "Quiz",
+    path: "/dashboard/Quiz",
     type: ACCOUNT_TYPE.INSTRUCTOR,
     icon: "VscStarFull",
   },
