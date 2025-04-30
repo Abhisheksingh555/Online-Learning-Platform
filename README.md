@@ -1,11 +1,6 @@
-
-<img src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/frontend/src/assets/Logo/Logo-Full-Light.png' />
-
 # Project Description 📝
 StudyNotion is a fully functional ed-tech platform that enables users to create, consume, and rate educational content. <br/>
 The platform is built using the **MERN stack**, which includes ReactJS, NodeJS, MongoDB, and ExpressJS.
-
-<h2>Live link 🌍📡 - [  https://study-notion-mern-stack.netlify.app/  ]</h2>
 <hr/>
 
 
