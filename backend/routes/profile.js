@@ -36,7 +36,7 @@ router.get('/instructorDashboard', auth, isInstructor, instructorDashboard);
 
 
 // student 
-router.get("/students", getAllStudents);
+router.get("/students", auth,getAllStudents);
 
 
 

@@ -1,323 +1,499 @@
-import React, { useState } from 'react';
-import { 
-  FaCalendarCheck, 
-  FaClock, 
-  FaPlusCircle, 
-  FaChalkboardTeacher, 
-  FaEdit, 
-  FaTrash, 
-  FaUser 
-} from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import { FiCalendar, FiClock, FiEdit, FiPlus, FiTrash2, FiUsers, FiLink } from "react-icons/fi";
 
 const LiveClassTeacher = () => {
-  const [classTitle, setClassTitle] = useState('');
-  const [classDate, setClassDate] = useState('');
-  const [classTime, setClassTime] = useState('');
-  const [classDescription, setClassDescription] = useState('');
-  const [classDuration, setClassDuration] = useState('60');
-  const [scheduledClasses, setScheduledClasses] = useState([
-    {
-      id: 1,
-      title: 'Advanced React Patterns',
-      date: '2025-04-15',
-      time: '14:00',
-      description: 'Exploring advanced React concepts and best practices',
-      duration: '90',
-      students: 24
-    },
-    {
-      id: 2,
-      title: 'Node.js Fundamentals',
-      date: '2025-04-17',
-      time: '10:30',
-      description: 'Introduction to Node.js and backend development',
-      duration: '120',
-      students: 18
-    }
-  ]);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [liveClasses, setLiveClasses] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [studentsList, setStudentsList] = useState([]);
+  const [classForm, setClassForm] = useState({ 
+    title: "", 
+    description: "", 
+    startTime: "", 
+    endTime: "", 
+    meetingLink: "", 
+    students: [] 
+  });
   const [editingClass, setEditingClass] = useState(null);
+  const navigate = useNavigate();
 
-  const handleAddClass = () => {
-    if (classTitle && classDate && classTime) {
-      const newClass = {
-        id: scheduledClasses.length + 1,
-        title: classTitle,
-        date: classDate,
-        time: classTime,
-        description: classDescription,
-        duration: classDuration,
-        students: 0
-      };
-      setScheduledClasses([...scheduledClasses, newClass]);
-      resetForm();
-      setModalVisible(false);
-    } else {
-      alert('Please fill in all required fields');
+  // Helper function to fetch auth token
+  const getAuthToken = useCallback(() => {
+    try {
+      const token = JSON.parse(localStorage.getItem("token"));
+      if (!token) {
+        toast.error("Please login to access live classes");
+        navigate("/login");
+        return null;
+      }
+      return token;
+    } catch (error) {
+      toast.error("Authentication error. Please login again.");
+      navigate("/login");
+      return null;
+    }
+  }, [navigate]);
+
+  // Fetch all students
+  const fetchStudents = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await axios.get("http://localhost:4000/api/v1/profile/students", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.data.success) {
+        setStudentsList(response.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      toast.error(error.response?.data?.message || "Error fetching students");
     }
   };
 
-  const handleEditClass = () => {
-    if (classTitle && classDate && classTime) {
-      const updatedClasses = scheduledClasses.map(cls => 
-        cls.id === editingClass.id ? { 
-          ...cls, 
-          title: classTitle,
-          date: classDate,
-          time: classTime,
-          description: classDescription,
-          duration: classDuration
-        } : cls
+  // Fetch teacher's live classes
+  const fetchTeacherClasses = useCallback(async () => {
+    setLoading(true);
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await axios.get("http://localhost:4000/api/v1/live-class/teacher", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.data.success) {
+        setLiveClasses(response.data.data || []);
+      } else {
+        toast.error(response.data.message || "Failed to fetch classes");
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+      if (error.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        toast.error(error.response?.data?.message || "Error fetching live classes");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthToken, navigate]);
+
+  useEffect(() => {
+    fetchTeacherClasses();
+    fetchStudents();
+  }, [fetchTeacherClasses]);
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setClassForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle student selection
+  const handleStudentSelect = (studentId) => {
+    setClassForm(prev => ({
+      ...prev,
+      students: prev.students.includes(studentId)
+        ? prev.students.filter(id => id !== studentId)
+        : [...prev.students, studentId]
+    }));
+  };
+
+  // Handle class creation
+  const handleCreateClass = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    // Validate form
+    if (!classForm.title || !classForm.startTime || !classForm.endTime || 
+        !classForm.meetingLink || classForm.students.length === 0) {
+      toast.error("Please fill all required fields including at least one student");
+      return;
+    }
+
+    if (new Date(classForm.startTime) >= new Date(classForm.endTime)) {
+      toast.error("End time must be after start time");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        "http://localhost:4000/api/v1/live-class/create",
+        classForm,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
       );
-      setScheduledClasses(updatedClasses);
-      resetForm();
-      setModalVisible(false);
-    } else {
-      alert('Please fill in all required fields');
+
+      if (response.data.success) {
+        toast.success("Live class created successfully!");
+        resetForm();
+        fetchTeacherClasses();
+      } else {
+        toast.error(response.data.message || "Failed to create live class");
+      }
+    } catch (error) {
+      console.error("Create class error:", error);
+      toast.error(error.response?.data?.message || "Failed to create class");
     }
   };
 
-  const handleDeleteClass = (id) => {
-    if (window.confirm('Are you sure you want to delete this class?')) {
-      setScheduledClasses(scheduledClasses.filter(cls => cls.id !== id));
+  // Handle class update
+  const handleUpdateClass = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await axios.put(
+        `http://localhost:4000/api/v1/live-class/update/${editingClass._id}`,
+        classForm,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        toast.success("Live class updated successfully!");
+        resetForm();
+        fetchTeacherClasses();
+      } else {
+        toast.error(response.data.message || "Failed to update class");
+      }
+    } catch (error) {
+      console.error("Update class error:", error);
+      toast.error(error.response?.data?.message || "Failed to update class");
     }
   };
 
+  // Handle class deletion
+  const handleDeleteClass = async (classId) => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await axios.delete(
+        `http://localhost:4000/api/v1/live-class/delete/${classId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        toast.success("Live class deleted successfully!");
+        fetchTeacherClasses();
+      } else {
+        toast.error(response.data.message || "Failed to delete class");
+      }
+    } catch (error) {
+      console.error("Delete class error:", error);
+      toast.error(error.response?.data?.message || "Failed to delete class");
+    }
+  };
+
+  // Reset form
   const resetForm = () => {
-    setClassTitle('');
-    setClassDate('');
-    setClassTime('');
-    setClassDescription('');
-    setClassDuration('60');
+    setClassForm({ 
+      title: "", 
+      description: "", 
+      startTime: "", 
+      endTime: "", 
+      meetingLink: "", 
+      students: [] 
+    });
     setEditingClass(null);
+    setIsCreating(false);
   };
 
-  const openEditModal = (liveClass) => {
-    setClassTitle(liveClass.title);
-    setClassDate(liveClass.date);
-    setClassTime(liveClass.time);
-    setClassDescription(liveClass.description);
-    setClassDuration(liveClass.duration);
-    setEditingClass(liveClass);
-    setModalVisible(true);
-  };
-
-  const formatDate = (dateString) => {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  // Format date and time
+  const formatClassTime = (dateString) => {
+    const options = {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 text-gray-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        <motion.h1 
-          className="text-4xl md:text-5xl font-bold text-center text-[#2C3E50] mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          Teacher Dashboard
-        </motion.h1>
+  const formatTimeRange = (start, end) => {
+    const startTime = new Date(start).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const endTime = new Date(end).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    return `${startTime} - ${endTime}`;
+  };
 
-        {/* Action Bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-          <div className="text-xl font-semibold text-[#2C3E50]">
-            <FaChalkboardTeacher className="inline mr-2" />
-            My Scheduled Classes
-          </div>
-          <motion.button
-            onClick={() => {
-              resetForm();
-              setModalVisible(true);
-            }}
-            className="bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] text-white px-6 py-3 rounded-full flex items-center gap-2 hover:shadow-lg transition-all"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <FaPlusCircle className="text-xl" />
-            Schedule New Class
-          </motion.button>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-richblack-700 to-richblack-900 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-richblack-5 sm:text-4xl">
+            Manage Your Live Classes
+          </h1>
+          <p className="mt-3 text-lg text-richblack-300">
+            Create, update, and view your scheduled live classes
+          </p>
         </div>
 
-        {/* Class Grid */}
-        {scheduledClasses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {scheduledClasses.map((liveClass) => (
-              <motion.div
-                key={liveClass.id}
-                className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 relative"
-                whileHover={{ y: -5 }}
-                layout
-              >
-                <div className="absolute top-4 right-4 flex gap-2">
-                  <button 
-                    onClick={() => openEditModal(liveClass)}
-                    className="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-colors"
-                  >
-                    <FaEdit />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteClass(liveClass.id)}
-                    className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
-                  >
-                    <FaTrash />
-                  </button>
-                </div>
-
-                <div className="p-6">
-                  <h2 className="text-2xl font-bold text-[#2C3E50] mb-2">{liveClass.title}</h2>
-                  <p className="text-gray-600 mb-4">{liveClass.description}</p>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-gray-700">
-                      <FaCalendarCheck className="text-[#2EC4B6]" />
-                      <span>{formatDate(liveClass.date)}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-gray-700">
-                      <FaClock className="text-[#2EC4B6]" />
-                      <span>{liveClass.time} (Duration: {liveClass.duration} mins)</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-gray-700">
-                      <FaUser className="text-[#2EC4B6]" />
-                      <span>{liveClass.students} students enrolled</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 flex justify-between items-center">
-                    <button className="text-sm text-[#2EC4B6] hover:underline">
-                      View Attendance
-                    </button>
-                    <button className="bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] text-white px-4 py-2 rounded-lg text-sm">
-                      Start Class
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400 mb-4"></div>
+            <p className="text-richblack-300">Loading your live classes...</p>
           </div>
         ) : (
-          <motion.div 
-            className="bg-white rounded-xl p-8 text-center shadow-lg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <h3 className="text-xl font-semibold text-gray-600 mb-4">No classes scheduled yet</h3>
-            <p className="text-gray-500 mb-6">Click the button above to schedule your first live class</p>
-            <button
-              onClick={() => setModalVisible(true)}
-              className="bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] text-white px-6 py-2 rounded-full inline-flex items-center gap-2"
-            >
-              <FaPlusCircle />
-              Schedule Class
-            </button>
-          </motion.div>
-        )}
-
-        {/* Add/Edit Class Modal */}
-        <AnimatePresence>
-          {modalVisible && (
-            <motion.div 
-              className="fixed inset-0 bg-black/50 flex justify-center items-center p-4 z-50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div 
-                className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {liveClasses.map((liveClass) => (
+              <div
+                key={liveClass._id}
+                className="bg-richblack-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 border border-richblack-600"
               >
-                <div className="bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] p-6 text-white">
-                  <h3 className="text-2xl font-bold">
-                    {editingClass ? 'Edit Class' : 'Schedule New Class'}
-                  </h3>
-                </div>
-
-                <form onSubmit={(e) => e.preventDefault()} className="p-6 space-y-5">
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">Class Title*</label>
-                    <input
-                      type="text"
-                      value={classTitle}
-                      onChange={(e) => setClassTitle(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
-                      placeholder="Enter class title"
-                      required
-                    />
+                <div className="p-6">
+                  <div className="flex justify-between items-start">
+                    <h2 className="text-xl font-semibold text-richblack-5 line-clamp-2">
+                      {liveClass.title}
+                    </h2>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">Date*</label>
-                      <input
-                        type="date"
-                        value={classDate}
-                        onChange={(e) => setClassDate(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
-                        required
-                      />
+                  <p className="mt-3 text-richblack-300 line-clamp-3">
+                    {liveClass.description || "No description available"}
+                  </p>
+
+                  <div className="mt-4 space-y-2 text-sm text-richblack-300">
+                    <div className="flex items-center">
+                      <FiCalendar className="mr-2 text-richblack-400" />
+                      <span>{formatClassTime(liveClass.startTime)}</span>
                     </div>
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">Time*</label>
-                      <input
-                        type="time"
-                        value={classTime}
-                        onChange={(e) => setClassTime(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
-                        required
-                      />
+                    <div className="flex items-center">
+                      <FiClock className="mr-2 text-richblack-400" />
+                      <span>{formatTimeRange(liveClass.startTime, liveClass.endTime)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <FiLink className="mr-2 text-richblack-400" />
+                      <a 
+                        href={liveClass.meetingLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline"
+                      >
+                        Join Meeting
+                      </a>
+                    </div>
+                    <div className="flex items-center">
+                      <FiUsers className="mr-2 text-richblack-400" />
+                      <span>{liveClass.students.length} students enrolled</span>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">Duration (minutes)</label>
-                    <select
-                      value={classDuration}
-                      onChange={(e) => setClassDuration(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
-                    >
-                      <option value="30">30 mins</option>
-                      <option value="60">60 mins</option>
-                      <option value="90">90 mins</option>
-                      <option value="120">120 mins</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea
-                      value={classDescription}
-                      onChange={(e) => setClassDescription(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2EC4B6] focus:border-transparent"
-                      placeholder="Brief description of the class"
-                      rows="3"
-                    />
-                  </div>
-
-                  <div className="pt-4 flex justify-end gap-3">
+                  <div className="mt-4 flex justify-between">
                     <button
                       onClick={() => {
-                        resetForm();
-                        setModalVisible(false);
+                        setEditingClass(liveClass);
+                        setClassForm({
+                          title: liveClass.title,
+                          description: liveClass.description,
+                          startTime: new Date(liveClass.startTime).toISOString().slice(0, 16),
+                          endTime: new Date(liveClass.endTime).toISOString().slice(0, 16),
+                          meetingLink: liveClass.meetingLink,
+                          students: liveClass.students
+                        });
+                        setIsCreating(true);
                       }}
-                      className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="text-sm text-[#00A1E4] hover:text-[#0088c7]"
                     >
-                      Cancel
+                      <FiEdit className="inline-block mr-2" />
+                      Edit
                     </button>
                     <button
-                      onClick={editingClass ? handleEditClass : handleAddClass}
-                      className="px-6 py-2 bg-gradient-to-r from-[#2EC4B6] to-[#38BDF8] text-white rounded-lg hover:shadow-md"
+                      onClick={() => handleDeleteClass(liveClass._id)}
+                      className="text-sm text-red-500 hover:text-red-600"
                     >
-                      {editingClass ? 'Save Changes' : 'Add Class'}
+                      <FiTrash2 className="inline-block mr-2" />
+                      Delete
                     </button>
                   </div>
-                </form>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-10">
+          <button
+            onClick={() => {
+              setIsCreating(true);
+              setEditingClass(null);
+              setClassForm({ 
+                title: "", 
+                description: "", 
+                startTime: "", 
+                endTime: "", 
+                meetingLink: "", 
+                students: [] 
+              });
+            }}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm bg-[#00A1E4] hover:bg-[#0088c7] text-white focus:outline-none focus:ring-2 focus:ring-[#00A1E4] focus:ring-offset-2 transition-colors duration-200"
+          >
+            <FiPlus className="mr-2" />
+            Create New Class
+          </button>
+        </div>
+
+        {(isCreating || editingClass) && (
+          <div className="mt-10 bg-richblack-800 rounded-xl shadow-md overflow-hidden border border-richblack-600 p-6 sm:p-8">
+            <h2 className="text-2xl font-bold text-richblack-5">
+              {editingClass ? "Update Live Class" : "Create Live Class"}
+            </h2>
+
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-richblack-300 mb-1">
+                  Class Title *
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  placeholder="Enter class title"
+                  value={classForm.title}
+                  onChange={handleInputChange}
+                  className="w-full p-2 rounded-md text-sm bg-richblack-700 border border-richblack-600 text-richblack-100"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-richblack-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  placeholder="Enter class description"
+                  value={classForm.description}
+                  onChange={handleInputChange}
+                  className="w-full p-2 rounded-md text-sm bg-richblack-700 border border-richblack-600 text-richblack-100"
+                  rows="3"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-richblack-300 mb-1">
+                    Start Time *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="startTime"
+                    value={classForm.startTime}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded-md text-sm bg-richblack-700 border border-richblack-600 text-richblack-100"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-richblack-300 mb-1">
+                    End Time *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="endTime"
+                    value={classForm.endTime}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded-md text-sm bg-richblack-700 border border-richblack-600 text-richblack-100"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-richblack-300 mb-1">
+                  Meeting Link *
+                </label>
+                <input
+                  type="url"
+                  name="meetingLink"
+                  placeholder="Enter meeting URL"
+                  value={classForm.meetingLink}
+                  onChange={handleInputChange}
+                  className="w-full p-2 rounded-md text-sm bg-richblack-700 border border-richblack-600 text-richblack-100"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-richblack-300 mb-1">
+                  Select Students *
+                </label>
+                <div className="max-h-40 overflow-y-auto bg-richblack-700 rounded-md p-2 border border-richblack-600">
+                  {studentsList.length > 0 ? (
+                    studentsList.map(student => (
+                      <div key={student._id} className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          id={`student-${student._id}`}
+                          checked={classForm.students.includes(student._id)}
+                          onChange={() => handleStudentSelect(student._id)}
+                          className="mr-2"
+                        />
+                        <label htmlFor={`student-${student._id}`} className="text-richblack-100">
+                          {student.name || student.email}
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-richblack-300 text-sm">No students available</p>
+                  )}
+                </div>
+                {classForm.students.length > 0 && (
+                  <p className="text-xs text-richblack-300 mt-1">
+                    {classForm.students.length} student(s) selected
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-4">
+              <button
+                onClick={resetForm}
+                className="px-6 py-2 bg-richblack-600 hover:bg-richblack-500 text-white rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={editingClass ? handleUpdateClass : handleCreateClass}
+                className="px-6 py-2 bg-[#00A1E4] hover:bg-[#0088c7] text-white rounded-md"
+              >
+                {editingClass ? "Update Class" : "Create Class"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

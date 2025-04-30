@@ -17,6 +17,7 @@ const profileRoutes = require('./routes/profile');
 const paymentRoutes = require('./routes/payments');
 const courseRoutes = require('./routes/course');
 const aiRoutes = require("./routes/ai.routes");
+const liveClassRoutes = require("./routes/liveClassRoutes");
 
 // middleware 
 app.use(express.json()); // to parse json body
@@ -52,6 +53,7 @@ app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/payment', paymentRoutes);
 app.use('/api/v1/course', courseRoutes);
 app.use('/api/v1/ai/chatbot', aiRoutes);
+app.use("/api/v1/live-class", liveClassRoutes);
 
 
 // Default Route
