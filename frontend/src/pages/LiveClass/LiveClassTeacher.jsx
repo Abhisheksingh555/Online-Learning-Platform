@@ -162,8 +162,11 @@ const LiveClassTeacher = () => {
 
     try {
       const response = await axios.put(
-        `http://localhost:4000/api/v1/live-class/update/${editingClass._id}`,
-        classForm,
+        `http://localhost:4000/api/v1/live-class/update`,
+        {
+          classId: editingClass._id,
+          ...classForm,
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -171,7 +174,6 @@ const LiveClassTeacher = () => {
           },
         }
       );
-
       if (response.data.success) {
         toast.success("Live class updated successfully!");
         resetForm();
@@ -192,14 +194,17 @@ const LiveClassTeacher = () => {
 
     try {
       const response = await axios.delete(
-        `http://localhost:4000/api/v1/live-class/delete/${classId}`,
+        `http://localhost:4000/api/v1/live-class/delete`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
+          data: {
+            classId: classId,
+          },
         }
-      );
+      );      
 
       if (response.data.success) {
         toast.success("Live class deleted successfully!");
