@@ -3,6 +3,17 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { FiCalendar, FiClock, FiEdit, FiPlus, FiTrash2, FiUsers, FiLink } from "react-icons/fi";
+import { liveClassEndpoints,adminEndpoints } from "../../services/apis";
+const {
+  CREATE_LIVE_CLASS_API,
+  GET_TEACHER_LIVE_CLASSES_API, 
+  UPDATE_LIVE_CLASS_API,   
+  DELETE_LIVE_CLASS_API, 
+} = liveClassEndpoints;
+
+const {
+  ALL_STUDENT,
+} = adminEndpoints;
 
 const LiveClassTeacher = () => {
   const [liveClasses, setLiveClasses] = useState([]);
@@ -43,7 +54,7 @@ const LiveClassTeacher = () => {
     if (!token) return;
 
     try {
-      const response = await axios.get("http://localhost:4000/api/v1/profile/students", {
+      const response = await axios.get(ALL_STUDENT, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -66,7 +77,7 @@ const LiveClassTeacher = () => {
     if (!token) return;
 
     try {
-      const response = await axios.get("http://localhost:4000/api/v1/live-class/teacher", {
+      const response = await axios.get(GET_TEACHER_LIVE_CLASSES_API, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -132,7 +143,7 @@ const LiveClassTeacher = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:4000/api/v1/live-class/create",
+        CREATE_LIVE_CLASS_API,
         classForm,
         {
           headers: {
@@ -162,7 +173,7 @@ const LiveClassTeacher = () => {
 
     try {
       const response = await axios.put(
-        `http://localhost:4000/api/v1/live-class/update`,
+        UPDATE_LIVE_CLASS_API,
         {
           classId: editingClass._id,
           ...classForm,
@@ -194,7 +205,7 @@ const LiveClassTeacher = () => {
 
     try {
       const response = await axios.delete(
-        `http://localhost:4000/api/v1/live-class/delete`,
+        DELETE_LIVE_CLASS_API,
         {
           headers: {
             Authorization: `Bearer ${token}`,

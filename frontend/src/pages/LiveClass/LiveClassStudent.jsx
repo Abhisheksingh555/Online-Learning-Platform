@@ -3,6 +3,12 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { FiCalendar, FiClock, FiUser, FiLoader, FiAlertCircle, FiExternalLink } from "react-icons/fi";
+import { liveClassEndpoints } from "../../services/apis";
+
+const {
+  GET_UPCOMING_LIVE_CLASSES_API,
+  GET_LIVE_CLASS_DETAILS_API, 
+} = liveClassEndpoints;
 
 const LiveClassStudent = () => {
   const [upcomingClasses, setUpcomingClasses] = useState([]);
@@ -34,7 +40,7 @@ const LiveClassStudent = () => {
 
     try {
       const response = await axios.get(
-        "http://localhost:4000/api/v1/live-class/upcoming",
+        GET_UPCOMING_LIVE_CLASSES_API,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -75,7 +81,7 @@ const LiveClassStudent = () => {
     try {
       setJoiningClassId(classId);
       const response = await axios.get(
-        `http://localhost:4000/api/v1/live-class/join?classId=${classId}`,
+        `${GET_LIVE_CLASS_DETAILS_API}?classId=${classId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -281,7 +287,6 @@ const LiveClassStudent = () => {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

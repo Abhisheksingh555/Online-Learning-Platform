@@ -87,3 +87,13 @@ export const adminEndpoints = {
 export const aiChatbotEndpoints = {
   AI_CHATBOT : BASE_URL + "/ai/chatbot/ask"
 }
+
+// LIVE CLASS ENDPOINTS
+export const liveClassEndpoints = {
+  CREATE_LIVE_CLASS_API: BASE_URL + "/live-class/create",
+  GET_UPCOMING_LIVE_CLASSES_API: BASE_URL + "/live-class/upcoming",
+  GET_TEACHER_LIVE_CLASSES_API: BASE_URL + "/live-class/teacher",
+  GET_LIVE_CLASS_DETAILS_API: BASE_URL + "/live-class/join", 
+  UPDATE_LIVE_CLASS_API: BASE_URL + "/live-class/update",   
+  DELETE_LIVE_CLASS_API: BASE_URL + "/live-class/delete",    
+};
