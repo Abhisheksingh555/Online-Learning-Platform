@@ -1,15 +1,10 @@
-
-<img src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/frontend/src/assets/Logo/Logo-Full-Light.png' />
-
 # Project Description 📝
 StudyNotion is a fully functional ed-tech platform that enables users to create, consume, and rate educational content. <br/>
 The platform is built using the **MERN stack**, which includes ReactJS, NodeJS, MongoDB, and ExpressJS.
 
-<h2>Live link 🌍📡 - [  https://study-notion-mern-stack.netlify.app/  ]</h2>
 <hr/>
 
 
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/home1.png' />
 
 
 
@@ -39,7 +34,6 @@ The platform is built using the **MERN stack**, which includes ReactJS, NodeJS, 
 
 <br/>
 <br/>
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/Tech%20stack%20logo/gif.gif' />
 
 
 ## Tech Stack 💻🔧 
@@ -137,118 +131,7 @@ The back-end of StudyNotion uses several data models and database schemas to man
 ### Database 🛢️
 The database for the platform is built using MongoDB, a NoSQL database that provides a flexible and scalable data storage solution. MongoDB allows for the storage of unstructured and semi-structured data. The database stores the course content, user data, and other relevant information related to the platform.
 
-## Schema 📋
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/Schema.png' />
 
-<hr/>
-
-
-## React Hooks 🎣
-
-Utilized several React hooks for efficient state management and dynamic behavior:
-
-- `useState`
-- `useEffect`
-- `useDispatch`
-- `useParams`
-- `useSelector`
-- `useLocation`
-- `useNavigate`
-- `useRef`
-- `useForm`
-- `useDropzone`
-- `Custom-Hook`
-
-<br/>
-
-## 📚 **React Library**:
-
-- 🚀 **Lazy Loading**: Enhance performance by lazily loading images using the react-lazy-load-image library.
-- 📊 **Chart.js:**  Versatile charting library for creating interactive and visually appealing charts.
-- 🎭**Framer Motion:**  Animation library for React, providing smooth and expressive motion.
-- 📁 **React Dropzone:**  Drag-and-drop file uploader for React applications.
-- 🍞 **React Hot Toast:**  Elegant and customizable toast notifications for React applications.
-- 🔢 **React OTP Input:**  Input component for one-time password entry in React forms.
-- 📊 **React Super Responsive Table:**  Highly responsive and feature-rich table component for React.
-- 🔄 **Swiper:**  Modern touch slider for mobile and desktop browsers.
-- 🖋️ **React Type Animation:**  Simple and configurable typing animation component for React.
-- 🎥 **Video React:**  React-based video player for building rich multimedia experiences in web applications.
-
-
-
-##  🖥️ Screen Preview :
-
-# Random Home Page Background 🏠 
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/home3.png' />
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/home4.png' />
-
-# About Page
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/about.png' />
-
-# Contact Page
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/contact.png' />
-
-# Forgot passwornd
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/forgot%20pass.png' />
-
-# Dashboard
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/dashboard.png' />
-
-# Edit Profile
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/edit%20profile.png' />
-
-
-# Add Course
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/add%20course.png' />
-
-# Edit Course
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/edit%20course.png' />
-
-# Course Details 1
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/course%20details1.png' />
-
-# Course Details 2
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/course%20details2.png' />
-
-# Add Review
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/add%20review.png' />
-
-# Cart1
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/cart1.png' />
-
-
-
-
-# Enrolled Courses 1
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/enrolled%20courses1.png' />
-
-# Enrolled Courses 2
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/enrolled%20courses2.png' />
-
-# Instructor Data 1
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/instrctor%20data1.png' />
-
-# Instructor Data 2
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/instrctor%20data2.png' />
-
-# My Courses 1
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/myCourses1.png' />
-
-# My Courses 2
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/myCourses2.png' />
-
-# View Courses 1
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/view%20course1.png' />
-
-# View Courses 2
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/view%20course2.png' />
-
-
-# Delete Account
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/delete%20account.png' />
-
-# Footer
-<img width='100%' src='https://github.com/Abhisheksingh555/Study-Notion/blob/main/screenshots/footer.png' />
 
 
 
