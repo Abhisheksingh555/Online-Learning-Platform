@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { FileText, BookOpen, Calendar, Award, Search, Filter, Download, Upload, Check, Clock } from 'lucide-react';
+import { FileText, BookOpen, Calendar, Award, Search, Filter, Download, Upload, Check, Clock, X } from 'lucide-react';
 
 const subjects = ['Mathematics', 'Science', 'English', 'History', 'Art', 'Physical Education'];
 const classes = Array.from({ length: 12 }, (_, i) => `Grade ${i + 1}`);
 
-// Generate dummy assignments similar to teacher view but with submission status
 const generateDummyAssignments = () => {
   const dummyTitles = [
     'Algebra Homework',
@@ -29,33 +28,49 @@ const generateDummyAssignments = () => {
     class: classes[i % classes.length],
     points: [50, 100, 75, 150, 200][i % 5],
     attachments: [
-      { name: `assignment_${i + 1}.pdf`, url: '#', type: 'pdf' },
-      ...(i % 3 === 0 ? [{ name: `resources_${i + 1}.zip`, url: '#', type: 'zip' }] : [])
+      { 
+        id: uuidv4(),
+        name: `assignment_${i + 1}.pdf`, 
+        url: '#', 
+        type: 'pdf',
+        downloadCount: 0
+      },
+      ...(i % 3 === 0 ? [{ 
+        id: uuidv4(),
+        name: `resources_${i + 1}.zip`, 
+        url: '#', 
+        type: 'zip',
+        downloadCount: 0
+      }] : [])
     ],
     createdAt: new Date(Date.now() - 86400000 * (i + 1)).toISOString(),
-    status: 'assigned',
-    // Student-specific submission data
-    submission: Math.random() > 0.3 ? {
+    status: ['active', 'upcoming', 'overdue'][i % 3],
+    submission: i % 2 === 0 ? {
       id: uuidv4(),
       submittedAt: new Date(Date.now() - 86400000 * Math.floor(Math.random() * 3)).toISOString(),
-      file: { name: `my_submission_${i + 1}.pdf`, url: '#', type: 'pdf' },
-      grade: Math.random() > 0.5 ? Math.floor(Math.random() * 50) + 50 : null,
-      feedback: Math.random() > 0.5 ? 'Good work! Keep it up.' : null,
-      status: Math.random() > 0.5 ? 'submitted' : 'graded'
+      file: { 
+        id: uuidv4(),
+        name: `my_submission_${i + 1}.pdf`, 
+        url: '#', 
+        type: 'pdf',
+        downloadCount: 0
+      },
+      grade: i % 4 === 0 ? Math.floor(Math.random() * 50) + 50 : null,
+      feedback: i % 4 === 0 ? ['Good work!', 'Needs improvement', 'Excellent'][Math.floor(Math.random() * 3)] : null
     } : null
   }));
 };
 
 const StudentAssignment = () => {
   const [assignments, setAssignments] = useState([]);
-  const [completedAssignments, setCompletedAssignments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('active');
-  const [submissionFile, setSubmissionFile] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({});
 
   // Load dummy data on first render
   useEffect(() => {
@@ -65,13 +80,7 @@ const StudentAssignment = () => {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000));
         const dummyAssignments = generateDummyAssignments();
-        
-        // Split into active and completed assignments
-        const active = dummyAssignments.filter(a => !a.submission || a.submission.status !== 'graded');
-        const completed = dummyAssignments.filter(a => a.submission?.status === 'graded');
-        
-        setAssignments(active);
-        setCompletedAssignments(completed);
+        setAssignments(dummyAssignments);
       } catch (error) {
         console.error("Failed to load data:", error);
       } finally {
@@ -85,49 +94,142 @@ const StudentAssignment = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setSubmissionFile({
+      setUploadedFile({
+        id: uuidv4(),
         name: file.name,
         url: URL.createObjectURL(file),
-        type: file.name.split('.').pop()
+        type: file.name.split('.').pop(),
+        downloadCount: 0
+      });
+    }
+  };
+
+  const handleDownload = (assignmentId, fileId, isSubmission = false) => {
+    // Simulate download progress
+    setDownloadProgress(prev => ({ ...prev, [fileId]: 0 }));
+    
+    const interval = setInterval(() => {
+      setDownloadProgress(prev => {
+        const newProgress = prev[fileId] + 10;
+        if (newProgress >= 100) {
+          clearInterval(interval);
+          // Update download count
+          updateDownloadCount(assignmentId, fileId, isSubmission);
+          return { ...prev, [fileId]: 100 };
+        }
+        return { ...prev, [fileId]: newProgress };
+      });
+    }, 100);
+
+    // Clear progress after completion
+    setTimeout(() => {
+      setDownloadProgress(prev => {
+        const { [fileId]: _, ...rest } = prev;
+        return rest;
+      });
+    }, 1500);
+  };
+
+  const updateDownloadCount = (assignmentId, fileId, isSubmission) => {
+    setAssignments(prevAssignments => 
+      prevAssignments.map(assignment => {
+        if (assignment.id === assignmentId) {
+          if (isSubmission) {
+            // Update submission file download count
+            return {
+              ...assignment,
+              submission: {
+                ...assignment.submission,
+                file: {
+                  ...assignment.submission.file,
+                  downloadCount: (assignment.submission.file.downloadCount || 0) + 1
+                }
+              }
+            };
+          } else {
+            // Update assignment attachment download count
+            const updatedAttachments = assignment.attachments.map(attachment => {
+              if (attachment.id === fileId) {
+                return { ...attachment, downloadCount: (attachment.downloadCount || 0) + 1 };
+              }
+              return attachment;
+            });
+            return { ...assignment, attachments: updatedAttachments };
+          }
+        }
+        return assignment;
+      })
+    );
+
+    // Also update selected assignment if it's the one being viewed
+    if (selectedAssignment?.id === assignmentId) {
+      setSelectedAssignment(prev => {
+        if (isSubmission) {
+          return {
+            ...prev,
+            submission: {
+              ...prev.submission,
+              file: {
+                ...prev.submission.file,
+                downloadCount: (prev.submission.file.downloadCount || 0) + 1
+              }
+            }
+          };
+        } else {
+          const updatedAttachments = prev.attachments.map(attachment => {
+            if (attachment.id === fileId) {
+              return { ...attachment, downloadCount: (attachment.downloadCount || 0) + 1 };
+            }
+            return attachment;
+          });
+          return { ...prev, attachments: updatedAttachments };
+        }
       });
     }
   };
 
   const handleSubmitAssignment = (assignmentId) => {
-    if (!submissionFile) return;
+    if (!uploadedFile) return;
     
     setIsSubmitting(true);
     
     // Simulate API call
     setTimeout(() => {
-      const newSubmission = {
-        id: uuidv4(),
-        submittedAt: new Date().toISOString(),
-        file: submissionFile,
-        grade: null,
-        feedback: null,
-        status: 'submitted'
-      };
-      
-      // Update the assignment
-      setAssignments(assignments.map(a => 
-        a.id === assignmentId ? { ...a, submission: newSubmission } : a
-      ));
-      
-      // Move to completed if graded immediately (for demo)
-      if (Math.random() > 0.7) {
-        setAssignments(assignments.filter(a => a.id !== assignmentId));
-        setCompletedAssignments([
-          ...completedAssignments,
-          {
-            ...assignments.find(a => a.id === assignmentId),
-            submission: { ...newSubmission, status: 'graded', grade: Math.floor(Math.random() * 50) + 50 }
+      setAssignments(prevAssignments => 
+        prevAssignments.map(a => {
+          if (a.id === assignmentId) {
+            return {
+              ...a,
+              submission: {
+                id: uuidv4(),
+                submittedAt: new Date().toISOString(),
+                file: uploadedFile,
+                grade: null,
+                feedback: null
+              },
+              status: 'submitted'
+            };
           }
-        ]);
+          return a;
+        })
+      );
+      
+      // Update selected assignment if it's the one being viewed
+      if (selectedAssignment?.id === assignmentId) {
+        setSelectedAssignment({
+          ...selectedAssignment,
+          submission: {
+            id: uuidv4(),
+            submittedAt: new Date().toISOString(),
+            file: uploadedFile,
+            grade: null,
+            feedback: null
+          },
+          status: 'submitted'
+        });
       }
       
-      setSelectedAssignment(null);
-      setSubmissionFile(null);
+      setUploadedFile(null);
       setIsSubmitting(false);
     }, 1500);
   };
@@ -140,19 +242,23 @@ const StudentAssignment = () => {
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'graded': return 'bg-green-500';
       case 'submitted': return 'bg-blue-500';
-      case 'late': return 'bg-red-500';
+      case 'graded': return 'bg-green-500';
+      case 'overdue': return 'bg-red-500';
+      case 'upcoming': return 'bg-yellow-500';
+      case 'active': return 'bg-electricBlue';
       default: return 'bg-richblack-600';
     }
   };
 
   const getStatusText = (status) => {
     switch(status) {
-      case 'graded': return 'Graded';
       case 'submitted': return 'Submitted';
-      case 'late': return 'Late';
-      default: return 'Assigned';
+      case 'graded': return 'Graded';
+      case 'overdue': return 'Overdue';
+      case 'upcoming': return 'Upcoming';
+      case 'active': return 'Active';
+      default: return status;
     }
   };
 
@@ -160,19 +266,9 @@ const StudentAssignment = () => {
     const searchMatch = a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                       a.description.toLowerCase().includes(searchTerm.toLowerCase());
     const subjectMatch = filterSubject === 'all' || a.subject === filterSubject;
-    return searchMatch && subjectMatch;
+    const statusMatch = filterStatus === 'all' || a.status === filterStatus;
+    return searchMatch && subjectMatch && statusMatch;
   });
-
-  const filteredCompleted = completedAssignments.filter(a => {
-    const searchMatch = a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                      a.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const subjectMatch = filterSubject === 'all' || a.subject === filterSubject;
-    return searchMatch && subjectMatch;
-  });
-
-  const isAssignmentLate = (dueDate) => {
-    return new Date(dueDate) < new Date();
-  };
 
   return (
     <div className="min-h-screen px-4 md:px-6 py-8 bg-richblack-900 text-white">
@@ -181,27 +277,9 @@ const StudentAssignment = () => {
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-richblack-5">My Assignments</h1>
             <p className="text-richblack-300 mt-1">
-              {activeTab === 'active' 
-                ? `You have ${assignments.length} active assignments` 
-                : `Viewing ${completedAssignments.length} completed assignments`}
+              {`You have ${assignments.filter(a => a.status === 'active' || a.status === 'overdue').length} pending assignments`}
             </p>
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-richblack-700 mb-6">
-          <button
-            onClick={() => setActiveTab('active')}
-            className={`px-4 py-2 font-medium ${activeTab === 'active' ? 'text-electricBlue border-b-2 border-electricBlue' : 'text-richblack-400'}`}
-          >
-            Active Assignments
-          </button>
-          <button
-            onClick={() => setActiveTab('completed')}
-            className={`px-4 py-2 font-medium ${activeTab === 'completed' ? 'text-electricBlue border-b-2 border-electricBlue' : 'text-richblack-400'}`}
-          >
-            Completed Assignments
-          </button>
         </div>
 
         {/* Search and Filter */}
@@ -230,6 +308,18 @@ const StudentAssignment = () => {
                 <option key={subj} value={subj}>{subj}</option>
               ))}
             </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="border border-richblack-700 rounded-lg px-3 py-2 bg-richblack-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-electricBlue text-white"
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="submitted">Submitted</option>
+              <option value="graded">Graded</option>
+              <option value="overdue">Overdue</option>
+            </select>
           </div>
         </div>
 
@@ -239,147 +329,133 @@ const StudentAssignment = () => {
           </div>
         ) : (
           <>
-            {/* Active Assignments Tab */}
-            {activeTab === 'active' && (
-              <>
-                {filteredAssignments.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredAssignments.map(a => (
-                      <div key={a.id} className="bg-richblack-800 p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-richblack-700">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h2 className="text-xl font-semibold text-richblack-5">{a.title}</h2>
-                            <p className="text-richblack-300 text-sm flex items-center gap-1 mt-1">
-                              <BookOpen size={14} /> {a.subject} • {a.class}
-                            </p>
-                          </div>
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                            a.submission ? getStatusColor(a.submission.status) : 
-                            isAssignmentLate(a.dueDate) ? 'bg-red-500' : 'bg-richblack-600'
-                          }`}>
-                            {a.submission ? getStatusText(a.submission.status) : 
-                             isAssignmentLate(a.dueDate) ? 'Late' : 'Assigned'}
+            {filteredAssignments.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAssignments.map(a => (
+                  <div 
+                    key={a.id} 
+                    className="bg-richblack-800 p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-richblack-700 cursor-pointer"
+                    onClick={() => setSelectedAssignment(a)}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h2 className="text-xl font-semibold text-richblack-5">{a.title}</h2>
+                        <p className="text-richblack-300 text-sm flex items-center gap-1 mt-1">
+                          <BookOpen size={14} /> {a.subject} • {a.class}
+                        </p>
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(a.status)}`}>
+                        {getStatusText(a.status)}
+                      </span>
+                    </div>
+                    
+                    <p className="text-richblack-400 text-sm line-clamp-3 mb-4">{a.description}</p>
+                    
+                    <div className="flex justify-between text-sm text-richblack-300 mb-4">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={14} /> Due: {formatDate(a.dueDate)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Award size={14} /> {a.points} pts
+                      </span>
+                    </div>
+                    
+                    {a.attachments?.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-xs text-richblack-400 mb-1">Attachments:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {a.attachments.map((file) => (
+                            <div key={file.id} className="flex items-center">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownload(a.id, file.id);
+                                }}
+                                className="inline-flex items-center text-xs text-electricBlue hover:text-opacity-80"
+                                disabled={downloadProgress[file.id] !== undefined}
+                              >
+                                <Download className="h-3 w-3 mr-1" /> {file.name}
+                                {file.downloadCount > 0 && (
+                                  <span className="text-xs text-richblack-400 ml-1">({file.downloadCount})</span>
+                                )}
+                              </button>
+                              {downloadProgress[file.id] !== undefined && (
+                                <span className="ml-2 text-xs text-richblack-300">
+                                  {downloadProgress[file.id]}%
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {a.submission ? (
+                      <div className="mb-2">
+                        <p className="text-xs text-richblack-400 mb-1">Your submission:</p>
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(a.id, a.submission.file.id, true);
+                            }}
+                            className="inline-flex items-center text-xs text-electricBlue hover:text-opacity-80"
+                            disabled={downloadProgress[a.submission.file.id] !== undefined}
+                          >
+                            <Download className="h-3 w-3 mr-1" /> {a.submission.file.name}
+                            {a.submission.file.downloadCount > 0 && (
+                              <span className="text-xs text-richblack-400 ml-1">({a.submission.file.downloadCount})</span>
+                            )}
+                          </button>
+                          {downloadProgress[a.submission.file.id] !== undefined && (
+                            <span className="text-xs text-richblack-300">
+                              {downloadProgress[a.submission.file.id]}%
+                            </span>
+                          )}
+                          <span className="text-xs text-richblack-300">
+                            {formatDate(a.submission.submittedAt)}
                           </span>
                         </div>
-                        
-                        <p className="text-richblack-400 text-sm line-clamp-3 mb-4">{a.description}</p>
-                        
-                        <div className="flex justify-between text-sm text-richblack-300 mb-4">
-                          <span className="flex items-center gap-1">
-                            <Calendar size={14} /> Due: {formatDate(a.dueDate)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Award size={14} /> {a.points} pts
-                          </span>
-                        </div>
-                        
-                        {a.attachments?.length > 0 && (
-                          <div className="mb-4">
-                            <p className="text-xs text-richblack-400 mb-1">Assignment Files:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {a.attachments.map((file, index) => (
-                                <a 
-                                  key={index} 
-                                  href={file.url} 
-                                  className="inline-flex items-center text-xs text-electricBlue hover:text-opacity-80"
-                                  download
-                                >
-                                  <Download className="h-3 w-3 mr-1" /> {file.name}
-                                </a>
-                              ))}
+                        {a.submission.grade && (
+                          <div className="mt-2">
+                            <p className="text-xs text-richblack-400 mb-1">Grade:</p>
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm">
+                                {a.submission.grade}/{a.points}
+                              </span>
+                              {a.submission.feedback && (
+                                <span className="text-xs text-richblack-300 italic">
+                                  "{a.submission.feedback}"
+                                </span>
+                              )}
                             </div>
                           </div>
                         )}
-                        
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => setSelectedAssignment(a)}
-                            className="flex-1 bg-richblack-700 hover:bg-richblack-600 py-2 rounded-lg text-white text-sm flex items-center justify-center gap-1"
-                          >
-                            View Details
-                          </button>
-                          {!a.submission && (
-                            <button 
-                              onClick={() => setSelectedAssignment(a)}
-                              className="flex-1 bg-electricBlue hover:bg-opacity-80 py-2 rounded-lg text-richblack-900 font-medium text-sm flex items-center justify-center gap-1"
-                            >
-                              <Upload size={14} /> Submit
-                            </button>
-                          )}
-                        </div>
                       </div>
-                    ))}
+                    ) : (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedAssignment(a);
+                        }}
+                        className="w-full bg-electricBlue hover:bg-opacity-80 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                      >
+                        <Upload size={16} /> Submit Assignment
+                      </button>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-center text-richblack-400 mt-10 py-10 bg-richblack-800 rounded-xl border border-richblack-700">
-                    <p className="text-lg">No active assignments</p>
-                    <p className="mt-2">All your assignments are completed or not yet assigned</p>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Completed Assignments Tab */}
-            {activeTab === 'completed' && (
-              <>
-                {filteredCompleted.length > 0 ? (
-                  <div className="bg-richblack-800 rounded-xl overflow-hidden border border-richblack-700">
-                    <table className="w-full">
-                      <thead className="bg-richblack-700 text-richblack-50">
-                        <tr>
-                          <th className="py-3 px-4 text-left">Assignment</th>
-                          <th className="py-3 px-4 text-left">Subject</th>
-                          <th className="py-3 px-4 text-left">Status</th>
-                          <th className="py-3 px-4 text-left">Grade</th>
-                          <th className="py-3 px-4 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredCompleted.map(a => (
-                          <tr 
-                            key={a.id} 
-                            className="border-b border-richblack-700 hover:bg-richblack-750 cursor-pointer"
-                            onClick={() => setSelectedAssignment(a)}
-                          >
-                            <td className="py-3 px-4">{a.title}</td>
-                            <td className="py-3 px-4">{a.subject}</td>
-                            <td className="py-3 px-4">
-                              <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(a.submission?.status)}`}>
-                                {getStatusText(a.submission?.status)}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4">
-                              {a.submission?.grade ? (
-                                <span className="font-medium">{a.submission.grade}/{a.points}</span>
-                              ) : (
-                                <span className="text-richblack-400">Not graded</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              <button 
-                                onClick={() => setSelectedAssignment(a)}
-                                className="text-electricBlue hover:text-opacity-80 text-sm"
-                              >
-                                View Details
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center text-richblack-400 mt-10 py-10 bg-richblack-800 rounded-xl border border-richblack-700">
-                    <p className="text-lg">No completed assignments</p>
-                    <p className="mt-2">Your completed assignments will appear here</p>
-                  </div>
-                )}
-              </>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-richblack-400 mt-10 py-10 bg-richblack-800 rounded-xl border border-richblack-700">
+                <p className="text-lg">No assignments found</p>
+                <p className="mt-2">Try adjusting your search filters</p>
+              </div>
             )}
           </>
         )}
 
-        {/* Assignment Detail & Submission Modal */}
+        {/* Assignment Detail Modal */}
         {selectedAssignment && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
             <div className="bg-richblack-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-richblack-700">
@@ -394,7 +470,7 @@ const StudentAssignment = () => {
                   <button 
                     onClick={() => {
                       setSelectedAssignment(null);
-                      setSubmissionFile(null);
+                      setUploadedFile(null);
                     }}
                     className="text-richblack-400 hover:text-richblack-300"
                   >
@@ -403,12 +479,8 @@ const StudentAssignment = () => {
                 </div>
                 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    selectedAssignment.submission ? getStatusColor(selectedAssignment.submission.status) : 
-                    isAssignmentLate(selectedAssignment.dueDate) ? 'bg-red-500' : 'bg-richblack-600'
-                  }`}>
-                    {selectedAssignment.submission ? getStatusText(selectedAssignment.submission.status) : 
-                     isAssignmentLate(selectedAssignment.dueDate) ? 'Late' : 'Assigned'}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedAssignment.status)}`}>
+                    {getStatusText(selectedAssignment.status)}
                   </span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-richblack-700 text-richblack-100">
                     <Calendar size={14} className="mr-1" /> Due: {formatDate(selectedAssignment.dueDate)}
@@ -427,21 +499,29 @@ const StudentAssignment = () => {
                   <div className="mt-6">
                     <h3 className="text-lg font-medium text-richblack-5">Assignment Files</h3>
                     <div className="mt-2 space-y-2">
-                      {selectedAssignment.attachments.map((file, index) => (
-                        <a 
-                          key={index} 
-                          href={file.url} 
-                          download
-                          className="flex items-center text-electricBlue hover:text-opacity-80"
-                        >
-                          <Download size={16} className="mr-2" /> {file.name}
-                        </a>
+                      {selectedAssignment.attachments.map((file) => (
+                        <div key={file.id} className="flex items-center justify-between">
+                          <button
+                            onClick={() => handleDownload(selectedAssignment.id, file.id)}
+                            className="flex items-center text-electricBlue hover:text-opacity-80"
+                            disabled={downloadProgress[file.id] !== undefined}
+                          >
+                            <Download size={16} className="mr-2" /> {file.name}
+                            {file.downloadCount > 0 && (
+                              <span className="text-xs text-richblack-400 ml-1">({file.downloadCount})</span>
+                            )}
+                          </button>
+                          {downloadProgress[file.id] !== undefined && (
+                            <span className="text-xs text-richblack-300">
+                              Downloading... {downloadProgress[file.id]}%
+                            </span>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
                 )}
                 
-                {/* Submission Section */}
                 <div className="mt-8">
                   <h3 className="text-lg font-medium text-richblack-5 mb-4">
                     {selectedAssignment.submission ? 'Your Submission' : 'Submit Assignment'}
@@ -449,114 +529,111 @@ const StudentAssignment = () => {
                   
                   {selectedAssignment.submission ? (
                     <div className="bg-richblack-700 rounded-lg p-4 border border-richblack-600">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-richblack-100">
-                            Submitted on: {formatDate(selectedAssignment.submission.submittedAt)}
-                          </span>
-                          {selectedAssignment.submission.status === 'graded' && (
-                            <span className="flex items-center gap-1 text-sm bg-green-500/20 px-2 py-1 rounded-full">
-                              <Check size={14} /> Graded
-                            </span>
-                          )}
-                          {selectedAssignment.submission.status === 'submitted' && (
-                            <span className="flex items-center gap-1 text-sm bg-blue-500/20 px-2 py-1 rounded-full">
-                              <Clock size={14} /> Pending Review
-                            </span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <FileText size={18} className="mr-2 text-electricBlue" />
+                          <span>{selectedAssignment.submission.file.name}</span>
+                          {selectedAssignment.submission.file.downloadCount > 0 && (
+                            <span className="text-xs text-richblack-400 ml-1">({selectedAssignment.submission.file.downloadCount})</span>
                           )}
                         </div>
-                        <a 
-                          href={selectedAssignment.submission.file.url} 
-                          download
-                          className="text-electricBlue hover:text-opacity-80 text-sm flex items-center"
-                        >
-                          <Download size={14} className="mr-1" /> Download
-                        </a>
+                        <div className="flex items-center gap-2">
+                          {downloadProgress[selectedAssignment.submission.file.id] !== undefined && (
+                            <span className="text-xs text-richblack-300">
+                              {downloadProgress[selectedAssignment.submission.file.id]}%
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleDownload(selectedAssignment.id, selectedAssignment.submission.file.id, true)}
+                            className="text-electricBlue hover:text-opacity-80 text-sm flex items-center"
+                            disabled={downloadProgress[selectedAssignment.submission.file.id] !== undefined}
+                          >
+                            <Download size={16} className="mr-1" /> Download
+                          </button>
+                        </div>
+                        <span className="text-sm text-richblack-300">
+                          Submitted: {formatDate(selectedAssignment.submission.submittedAt)}
+                        </span>
                       </div>
                       
-                      {selectedAssignment.submission.grade && (
+                      {selectedAssignment.submission.grade ? (
                         <div className="mt-4">
-                          <h4 className="text-md font-medium text-richblack-100 mb-2">Grading</h4>
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <span className="text-xl font-bold text-green-500">
-                                {selectedAssignment.submission.grade}/{selectedAssignment.points}
-                              </span>
-                              <span className="ml-2 text-richblack-300">
-                                ({Math.round((selectedAssignment.submission.grade / selectedAssignment.points) * 100)}%)
-                              </span>
-                            </div>
-                            {selectedAssignment.submission.feedback && (
-                              <div className="bg-richblack-600/50 p-2 rounded-lg">
-                                <p className="text-sm text-richblack-100">
-                                  {selectedAssignment.submission.feedback}
-                                </p>
-                              </div>
-                            )}
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-richblack-50">Grade:</h4>
+                            <span className="text-lg font-bold">
+                              {selectedAssignment.submission.grade}/{selectedAssignment.points}
+                            </span>
                           </div>
+                          {selectedAssignment.submission.feedback && (
+                            <div className="mt-2">
+                              <h4 className="font-medium text-richblack-50">Feedback:</h4>
+                              <p className="text-richblack-300 italic mt-1">
+                                "{selectedAssignment.submission.feedback}"
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-4 text-yellow-500">
+                          <Clock size={16} />
+                          <span>Your submission is being reviewed</span>
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="bg-richblack-700 rounded-lg p-4 border border-richblack-600">
-                      {submissionFile ? (
-                        <div className="mb-4">
-                          <p className="text-sm text-richblack-300 mb-2">Selected file:</p>
-                          <div className="flex items-center justify-between bg-richblack-800 p-3 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <FileText size={18} />
-                              <span className="text-richblack-100">{submissionFile.name}</span>
+                      {!uploadedFile ? (
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <label className="cursor-pointer bg-richblack-600 py-3 px-6 rounded-md shadow-sm text-sm leading-4 font-medium text-richblack-100 hover:bg-opacity-80 border border-dashed border-richblack-500 flex flex-col items-center">
+                            <Upload size={24} className="mb-2" />
+                            <span>Click to upload file</span>
+                            <input 
+                              type="file" 
+                              onChange={handleFileUpload} 
+                              className="sr-only" 
+                            />
+                          </label>
+                          <p className="text-xs text-richblack-400 mt-2">
+                            PDF, DOCX, PPTX (Max 10MB)
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center">
+                              <FileText size={18} className="mr-2 text-electricBlue" />
+                              <span>{uploadedFile.name}</span>
                             </div>
                             <button 
-                              onClick={() => setSubmissionFile(null)}
-                              className="text-red-500 hover:text-red-400"
+                              onClick={() => setUploadedFile(null)}
+                              className="text-red-500 hover:text-red-400 text-sm"
                             >
                               Remove
                             </button>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="border-2 border-dashed border-richblack-600 rounded-lg p-6 text-center">
-                          <div className="flex flex-col items-center justify-center gap-2">
-                            <Upload size={24} className="text-richblack-400" />
-                            <p className="text-richblack-300">Upload your submission file</p>
-                            <label className="cursor-pointer bg-richblack-600 py-2 px-4 rounded-md shadow-sm text-sm leading-4 font-medium text-richblack-100 hover:bg-opacity-80 mt-2">
-                              <span>Select File</span>
-                              <input 
-                                type="file" 
-                                onChange={handleFileUpload} 
-                                className="sr-only" 
-                              />
-                            </label>
-                          </div>
+                          <button
+                            onClick={() => handleSubmitAssignment(selectedAssignment.id)}
+                            disabled={isSubmitting}
+                            className={`w-full py-2 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                              isSubmitting 
+                                ? 'bg-richblack-600 text-richblack-300' 
+                                : 'bg-electricBlue hover:bg-opacity-80 text-richblack-900'
+                            }`}
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <span className="animate-spin">↻</span>
+                                Submitting...
+                              </>
+                            ) : (
+                              <>
+                                <Check size={16} />
+                                Submit Assignment
+                              </>
+                            )}
+                          </button>
                         </div>
                       )}
-                      
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          onClick={() => handleSubmitAssignment(selectedAssignment.id)}
-                          disabled={!submissionFile || isSubmitting}
-                          className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
-                            !submissionFile || isSubmitting
-                              ? 'bg-richblack-600 text-richblack-400 cursor-not-allowed'
-                              : 'bg-electricBlue hover:bg-opacity-80 text-richblack-900'
-                          }`}
-                        >
-                          {isSubmitting ? (
-                            <>
-                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Submitting...
-                            </>
-                          ) : (
-                            <>
-                              <Upload size={16} /> Submit Assignment
-                            </>
-                          )}
-                        </button>
-                      </div>
                     </div>
                   )}
                 </div>
